@@ -1,0 +1,9 @@
+[package]
+name = "imon"
+version = "0.1.0"
+authors = ["Kracekumar R <me@kracekumar.com>"]
+
+[dependencies]
+
+argparse = "*"
+pcap = {git= "https://github.com/ebfull/pcap"}
