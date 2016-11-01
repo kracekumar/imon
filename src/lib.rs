@@ -1,9 +1,6 @@
-#[cfg(test)]
-mod sniffer;
-mod viewer;
+extern crate rusqlite;
+extern crate time;
+extern crate chrono;
 
-mod tests {
-    #[test]
-    fn it_works() {
-    }
-}
+pub mod cli;
+mod db;

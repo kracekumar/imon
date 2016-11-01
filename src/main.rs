@@ -1,7 +1,6 @@
-mod cli;
-
+extern crate imon;
 
 fn main(){
-    cli::parse_arguments();
+    imon::cli::parse_arguments();
 }
 

@@ -8,7 +8,10 @@ use std;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::sync::mpsc;
+use rusqlite::Connection;
 use std::collections::HashMap;
+
+use db;
 
 
 #[derive(Debug, Clone)]
@@ -545,7 +548,7 @@ fn sniff(sender: &mpsc::Sender<Vec<u8>>){
 }
 
 
-fn decode(receiver: &mpsc::Receiver<Vec<u8>>, domain_cache: &mut HashMap<String, String>){
+fn decode(receiver: &mpsc::Receiver<Vec<u8>>, domain_cache: &mut HashMap<String, String>, conn: &Connection){
     loop{
         let packet = receiver.recv().unwrap();
         decode_packet(packet, domain_cache);
@@ -589,9 +592,10 @@ fn start(){
     sniffer_handle = thread::spawn(move || {
         sniff(&sender);
     });
+    let conn = db::create_conn();
     // Start depositer
     depositer_handle = thread::spawn(move || {
-        decode(&receiver, Arc::get_mut(&mut domain_cache_arc).unwrap());
+        decode(&receiver, Arc::get_mut(&mut domain_cache_arc).unwrap(), &conn);
     });
     // Start Hub
     hub_handle = thread::spawn(|| hub());

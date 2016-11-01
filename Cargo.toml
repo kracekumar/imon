@@ -1,9 +1,13 @@
 [package]
+authors = ["Kracekumar R <me@kracekumar.com>"]
 name = "imon"
 version = "0.1.0"
-authors = ["Kracekumar R <me@kracekumar.com>"]
 
 [dependencies]
-
 argparse = "*"
-pcap = {git= "https://github.com/ebfull/pcap"}
+chrono = "0.2"
+rusqlite = "0.7.3"
+time = "0.1.35"
+
+[dependencies.pcap]
+git = "https://github.com/ebfull/pcap"
