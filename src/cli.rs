@@ -1,6 +1,5 @@
 #[allow(dead_code)]
 #[allow(exceeding_bitshifts)]
-#[feature(clone_from_slice)]
 
 extern crate pcap;
 extern crate argparse;
@@ -440,7 +439,7 @@ fn get_domain_name(name: String) -> String{
 }
 
 
-fn decode_dns_packet<'a>(packet: &'a [u8], domain_cache: &mut HashMap<&'a str, &str>){
+fn decode_dns_packet(packet: &[u8], domain_cache: &mut HashMap<String, String>){
     let id = bytes_to_int(&packet[0..2]) as u16;
     // This is the first bit
     let query = (packet[2] & 10000000) == 1;
@@ -459,40 +458,58 @@ fn decode_dns_packet<'a>(packet: &'a [u8], domain_cache: &mut HashMap<&'a str, &
     //question_name = bytes_to_int
     let (qsection, answer_data) = extract_dns_question(&packet[12..]);
     let mut answer = extract_dns_answer(&answer_data).unwrap();
+
     if answer.name == "" {
         answer.update_name(qsection.qname.clone());
     }
+
+    let mut answer_clone = answer.clone();
+    let qsection_clone = qsection.clone();
+
     let dns_packet = DNSPacket{id: id, query: query, opcode: opcode, authoriative_answer:authoriative_answer,
-                           trun_cation: trun_cation, recursion_desired: recursion_desired,
-                           recursion_available: recursion_available, rcode: rcode,
-                           qdcount: qdcount, ancount: ancount, nscount: nscount,
-                           arcount: arcount, qsection: &qsection.clone(), answer: &answer.clone(),
+                               trun_cation: trun_cation, recursion_desired: recursion_desired,
+                               recursion_available: recursion_available, rcode: rcode,
+                               qdcount: qdcount, ancount: ancount, nscount: nscount,
+                               arcount: arcount, qsection: &qsection, answer: &answer,
                                raw: &packet};
+
     let cloned_dns_packet = dns_packet.clone();
     println!("{:?}", dns_packet);
-    if cloned_dns_packet.answer.rdata.len() > 0 {
-        let domain_name = get_domain_name(dns_packet.answer.name.clone());
-        for (index, ip) in cloned_dns_packet.answer.rdata.iter().enumerate() {
-            domain_cache.insert(&ip, &domain_name.clone());
+
+    if answer_clone.rdata.len() > 0 {
+        let domain_name = get_domain_name(answer_clone.name.clone());
+        for (index, ip) in answer_clone.rdata.iter().enumerate() {
+            domain_cache.insert(ip.to_string(), domain_name.clone());
         }
     }
 }
 
 
-fn decode_packet(packet: Vec<u8>, domain_cache: &mut HashMap<&str, &str>){
+fn store_tcp_packet(ip: String, len: usize, domain_cache: &mut HashMap<String, String>){
+    let val = domain_cache.get(&ip);
+    match val{
+        Some(domain_name) => {
+            println!("Data for {:?} of {:?} bytes", domain_name, len);
+        },
+        None => {
+            println!("IP is missing in cache{:?}", ip);
+        }
+    }
+}
+
+
+fn decode_packet(packet: Vec<u8>, domain_cache: &mut HashMap<String, String>){
+    let len = packet.len();
     let physical_layer_packet = decode_physical_layer(&packet);
-    // println!("Dst: {:?}, Src: {:?}", physical_layer_packet.dst, physical_layer_packet.src);
     if physical_layer_packet.packet_type == PacketType::IPv4 {
-        let payload: &[u8] = &packet[14..];
-        let ipv4_packet = decode_ipv4_packet(&payload);
-        // println!("Dst: {:?}, Src: {}", ipv4_packet.destination_ip,
-        //          ipv4_packet.source_ip);
+        let ipv4_packet = decode_ipv4_packet(&packet[14 ..]);
+
         if ipv4_packet.protocol == PacketType::TCP {
             let payload: &[u8] = ipv4_packet.payload;
             let tcp_packet = decode_tcp_packet(&payload);
             match tcp_packet.source_port{
                 80 | 443 => {
-                    println!("Tcp packet: {:?}", 1);
+                    store_tcp_packet(ipv4_packet.source_ip.to_string(), len, domain_cache);
                 },
                 _ => {}
             }
@@ -528,7 +545,7 @@ fn sniff(sender: &mpsc::Sender<Vec<u8>>){
 }
 
 
-fn decode(receiver: &mpsc::Receiver<Vec<u8>>, domain_cache: &mut HashMap<&str, &str>){
+fn decode(receiver: &mpsc::Receiver<Vec<u8>>, domain_cache: &mut HashMap<String, String>){
     loop{
         let packet = receiver.recv().unwrap();
         decode_packet(packet, domain_cache);
@@ -561,7 +578,7 @@ fn start(){
     // ZMQ socket
     // Pcap library capture
     let (sender, receiver) = mpsc::channel();
-    let mut domain_cache: HashMap<&str, &str> = HashMap::new();
+    let mut domain_cache: HashMap<String, String> = HashMap::new();
     let mut domain_cache_arc = Arc::new(domain_cache);
 
     let sniffer_handle: thread::JoinHandle<()>;
