@@ -488,11 +488,12 @@ fn decode_dns_packet(packet: &[u8], domain_cache: &mut HashMap<String, String>){
 }
 
 
-fn store_tcp_packet(ip: String, len: usize, domain_cache: &mut HashMap<String, String>){
+fn store_packet(ip: String, len: usize, domain_cache: &mut HashMap<String, String>, conn: &Connection){
     let val = domain_cache.get(&ip);
     match val{
         Some(domain_name) => {
             println!("Data for {:?} of {:?} bytes", domain_name, len);
+            db::Traffic::create_or_update(domain_name.to_string(), len as i64, conn);
         },
         None => {
             println!("IP is missing in cache{:?}", ip);
@@ -501,7 +502,7 @@ fn store_tcp_packet(ip: String, len: usize, domain_cache: &mut HashMap<String, S
 }
 
 
-fn decode_packet(packet: Vec<u8>, domain_cache: &mut HashMap<String, String>){
+fn decode_packet(packet: Vec<u8>, domain_cache: &mut HashMap<String, String>, conn: &Connection){
     let len = packet.len();
     let physical_layer_packet = decode_physical_layer(&packet);
     if physical_layer_packet.packet_type == PacketType::IPv4 {
@@ -510,11 +511,13 @@ fn decode_packet(packet: Vec<u8>, domain_cache: &mut HashMap<String, String>){
         if ipv4_packet.protocol == PacketType::TCP {
             let payload: &[u8] = ipv4_packet.payload;
             let tcp_packet = decode_tcp_packet(&payload);
-            match tcp_packet.source_port{
-                80 | 443 => {
-                    store_tcp_packet(ipv4_packet.source_ip.to_string(), len, domain_cache);
-                },
-                _ => {}
+            if (tcp_packet.source_port == 80) | (tcp_packet.source_port == 443){
+                store_packet(ipv4_packet.source_ip.to_string(), len, domain_cache, conn);
+            } else if (tcp_packet.destination_port == 80) | (tcp_packet.destination_port == 443){
+                store_packet(ipv4_packet.destination_ip.to_string(), len, domain_cache, conn);
+            }
+            else {
+                println!("Non HTTP tcp packet {:?}, {:?}", ipv4_packet, tcp_packet);
             }
         }
         else if ipv4_packet.protocol == PacketType::UDP {
@@ -522,7 +525,9 @@ fn decode_packet(packet: Vec<u8>, domain_cache: &mut HashMap<String, String>){
             let udp_packet = decode_udp_packet(&payload);
             match udp_packet.source_port {
                 53 => decode_dns_packet(udp_packet.payload.unwrap(), domain_cache),
-                _ => {}
+                _ => {
+                    store_packet(ipv4_packet.source_ip.to_string(), len, domain_cache, conn);
+                }
             }
         }
     }
@@ -551,7 +556,7 @@ fn sniff(sender: &mpsc::Sender<Vec<u8>>){
 fn decode(receiver: &mpsc::Receiver<Vec<u8>>, domain_cache: &mut HashMap<String, String>, conn: &Connection){
     loop{
         let packet = receiver.recv().unwrap();
-        decode_packet(packet, domain_cache);
+        decode_packet(packet, domain_cache, conn);
     }
 }
 

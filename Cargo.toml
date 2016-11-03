@@ -6,8 +6,11 @@ version = "0.1.0"
 [dependencies]
 argparse = "*"
 chrono = "0.2"
-rusqlite = "0.7.3"
 time = "0.1.35"
+
+[dependencies.rusqlite]
+version = "0.7.3"
+features = ["chrono"]
 
 [dependencies.pcap]
 git = "https://github.com/ebfull/pcap"
