@@ -2,7 +2,6 @@
 #[allow(exceeding_bitshifts)]
 
 extern crate pcap;
-extern crate argparse;
 
 use std;
 use std::sync::{Arc, Mutex};
@@ -11,7 +10,28 @@ use std::sync::mpsc;
 use rusqlite::Connection;
 use std::collections::HashMap;
 
+use docopt::Docopt;
+use Args;
 use db;
+use ipc;
+
+const USAGE: &'static str = "
+imon
+
+Usage:
+  imon start
+  imon report [--today | --week]
+  imon report from <start_date> to <end_date>
+  imon (-h | --help)
+  imon --version
+
+Options:
+  -h --help     Show this screen.
+  --version     Show version.
+  --today       Take today's date as argument
+  --week        Take this week date range as argument
+";
+
 
 
 #[derive(Debug, Clone)]
@@ -384,45 +404,45 @@ fn extract_dns_question(packet: &[u8]) -> (QSection, &[u8]){
 
 fn extract_dns_answer(packet: &[u8]) -> Option<DNSAnswer>{
     if packet.len() <= 0 as usize {
-        ()
-    }
-
-    match packet[0]{
-        192 => {
-            /*192 = 11000000 */
-            /* First byte tells if the response is pointer based reference.
-            Second byte tells the position from which request domain name starts from.
-            This is already parsed in question section. Pick the name from there.
-             */
-            let mut start = 2;
-            let ans_type = get_dns_packet_type(
-                bytes_to_int(&packet[start as usize .. (start + 2) as usize]) as u16);
-            start += 2;
-            let class = bytes_to_int(&packet[start as usize .. (start + 2) as usize]) as u16;
-            start = start + 2;
-            let ttl = bytes_to_int(&packet[start as usize .. (start + 4) as usize]) as u32;
-            start = start + 4;
-            let rlength = bytes_to_int(&packet[start as usize .. (start + 2) as usize]) as u16;
-            start = start + 2;
-            let mut rdata = Vec::new(); /* Assumption maximum of 6 IPs */
-            if ans_type == DNSRequestType::A || ans_type == DNSRequestType::CNAME {
-                for i in 0..(rlength/4) {
-                    let ip_octets: &[u8] = &packet[(start) as usize .. (start + 4) as usize];
-                    let address = format!("{:?}.{:?}.{:?}.{:?}",
-                                          ip_octets[0], ip_octets[1], ip_octets[2], ip_octets[3]);
-                    rdata.push(address);
-                    start = start + 4;
+        None
+    } else {
+        match packet[0]{
+            192 => {
+                /*192 = 11000000 */
+                /* First byte tells if the response is pointer based reference.
+                Second byte tells the position from which request domain name starts from.
+                This is already parsed in question section. Pick the name from there.
+                 */
+                let mut start = 2;
+                let ans_type = get_dns_packet_type(
+                    bytes_to_int(&packet[start as usize .. (start + 2) as usize]) as u16);
+                start += 2;
+                let class = bytes_to_int(&packet[start as usize .. (start + 2) as usize]) as u16;
+                start = start + 2;
+                let ttl = bytes_to_int(&packet[start as usize .. (start + 4) as usize]) as u32;
+                start = start + 4;
+                let rlength = bytes_to_int(&packet[start as usize .. (start + 2) as usize]) as u16;
+                start = start + 2;
+                let mut rdata = Vec::new(); /* Assumption maximum of 6 IPs */
+                if ans_type == DNSRequestType::A || ans_type == DNSRequestType::CNAME {
+                    for i in 0..(rlength/4) {
+                        let ip_octets: &[u8] = &packet[(start) as usize .. (start + 4) as usize];
+                        let address = format!("{:?}.{:?}.{:?}.{:?}",
+                                              ip_octets[0], ip_octets[1], ip_octets[2], ip_octets[3]);
+                        rdata.push(address);
+                        start = start + 4;
+                    }
                 }
-            }
-            // TODO: Support AAAA, SOA and other records
-            Some(DNSAnswer{name: "".to_string(), ans_type: ans_type, class: class,
-                           ttl: ttl, rlength: rlength, rdata: rdata})
-        },
-        _ => {
-            // This is DNS notation. TODO: Implement
-            None
+                // TODO: Support AAAA, SOA and other records
+                Some(DNSAnswer{name: "".to_string(), ans_type: ans_type, class: class,
+                               ttl: ttl, rlength: rlength, rdata: rdata})
+            },
+            _ => {
+                // This is DNS notation. TODO: Implement
+                None
             }
         }
+    }
 }
 
 
@@ -517,6 +537,7 @@ fn decode_packet(packet: Vec<u8>, domain_cache: &mut HashMap<String, String>, co
                 store_packet(ipv4_packet.destination_ip.to_string(), len, domain_cache, conn);
             }
             else {
+                store_packet(ipv4_packet.destination_ip.to_string(), len, domain_cache, conn);
                 println!("Non HTTP tcp packet {:?}, {:?}", ipv4_packet, tcp_packet);
             }
         }
@@ -573,6 +594,7 @@ fn depositer(receiver: &mpsc::Receiver<Traffic>){
 
 fn hub(){
     println!("Hub");
+    ipc::listen();
 }
 
 
@@ -625,24 +647,17 @@ fn invalid(){
 
 
 pub fn parse_arguments(){
-    // Attach all commands
-    let mut verbose = false;
-    let mut command = "".to_string();
-    {
-        let mut parser = argparse::ArgumentParser::new();
-        parser.set_description("imon is a command line utility to monitor internet data consumption");
-        parser.refer(&mut verbose)
-            .add_option(&["-v", "--verbose"], argparse::StoreTrue,
-                        "Be verbose");
-        parser.refer(&mut command).required()
-            .add_argument("command", argparse::Store,
-                          r#"Command to run (either "start" or "top")"#);
-        parser.parse_args_or_exit();
-    }
-    // Get all commands from user
-    match command.as_ref() {
-        "start" => start(),
-        "top" => top(),
-        _ => invalid(),
+    let args: Args = Docopt::new(USAGE)
+        .and_then(|d| d.decode())
+        .unwrap_or_else(|e| e.exit());
+    println!("{:?}", args);
+    if args.cmd_start {
+        start();
+    } else if args.cmd_report {
+        if args.flag_today{
+            ipc::query(&args);
+        } else {
+            println!("{}", "nothing now");
+        }
     }
 }

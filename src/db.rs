@@ -32,6 +32,14 @@ pub struct Traffic {
 
 
 impl Traffic{
+    fn to_tuple(self) -> (i32, String, i64, String){
+        /* `NaiveDate` doesn't implement `rustc_serialize::Decodable`
+        and `rustc_serialize::Decodable` so send tuple across the socket
+        */
+        (self.id, self.domain_name, self.data_consumed_in_bytes,
+         format!("{}", self.date.format("%Y-%m-%d")))
+    }
+
     fn create(domain_name: String, data_consumed_in_bytes: i64, conn: &Connection){
         /* Create a new traffic object
          */
@@ -93,6 +101,29 @@ values ($1, $2, $3, $4, $5)", &[&traffic.domain_name, &traffic.data_consumed_in_
                 Traffic::create(domain_name.clone(), data_consumed_in_bytes, conn);
             }
         }
+    }
+
+    // Reporting functions
+    pub fn report_today(conn: &Connection) -> Vec<Traffic>{
+        let date = get_current_date();
+        let sql_stmt = format!("select id, domain_name, data_consumed_in_bytes, date, created_at, updated_at from
+        traffic where date=\"{:?}\" order by data_consumed_in_bytes desc", date);
+        let mut stmt = conn.prepare(&sql_stmt).unwrap();
+        let mut qs = stmt.query_map(&[], |row|{
+            Traffic{
+                id: row.get(0),
+                domain_name: row.get(1),
+                data_consumed_in_bytes: row.get(2),
+                date: row.get(3),
+                created_at: row.get(4),
+                updated_at: row.get(5),
+            }
+        }).unwrap();
+        let mut res: Vec<Traffic> = Vec::new();
+        for traffic in qs {
+            res.push(traffic.unwrap());
+        }
+        res
     }
 }
 

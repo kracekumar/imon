@@ -7,6 +7,11 @@ version = "0.1.0"
 argparse = "*"
 chrono = "0.2"
 time = "0.1.35"
+mioco = "*"
+bytes = "0.2.11"
+docopt = "0.6"
+rustc-serialize = "0.3"  # if you're using `derive(RustcDecodable)`
+rmp-serialize = "0.7.0"
 
 [dependencies.rusqlite]
 version = "0.7.3"
@@ -14,3 +19,7 @@ features = ["chrono"]
 
 [dependencies.pcap]
 git = "https://github.com/ebfull/pcap"
+
+[dependencies.rmp]
+rmp = "^0.7"
+
