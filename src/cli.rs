@@ -19,17 +19,18 @@ const USAGE: &'static str = "
 imon
 
 Usage:
-  imon start
-  imon report [--today | --week]
-  imon report from <start_date> to <end_date>
-  imon (-h | --help)
-  imon --version
+  imon <command> [<args> ...] [-h|--help] [--from=<from>] [--to=<to>]
 
 Options:
   -h --help     Show this screen.
   --version     Show version.
-  --today       Take today's date as argument
-  --week        Take this week date range as argument
+  --start       Start date in the format YYYY-MM-DD
+  --end         End date in the format YYYY-MM-DD
+
+The mostly used commands are
+    start    Start the daemon
+    report   Report
+    site     Display Site specific data
 ";
 
 
@@ -287,7 +288,7 @@ fn decode_ipv4_packet(packet: &[u8]) -> IPv4Packet{
     }
 
     let payload: &[u8] = &packet[payload_start as usize ..];
-    
+
     IPv4Packet{version: version, ihl: ihl, tos: tos, total_length: total_length, id: id,
                flags: flags, fragment_offset: fragment_offset, ttl: ttl, protocol: protocol,
                header_checksum: header_checksum, source_ip: source_ip,
@@ -538,7 +539,6 @@ fn decode_packet(packet: Vec<u8>, domain_cache: &mut HashMap<String, String>, co
             }
             else {
                 store_packet(ipv4_packet.destination_ip.to_string(), len, domain_cache, conn);
-                println!("Non HTTP tcp packet {:?}, {:?}", ipv4_packet, tcp_packet);
             }
         }
         else if ipv4_packet.protocol == PacketType::UDP {
@@ -650,14 +650,16 @@ pub fn parse_arguments(){
     let args: Args = Docopt::new(USAGE)
         .and_then(|d| d.decode())
         .unwrap_or_else(|e| e.exit());
-    println!("{:?}", args);
-    if args.cmd_start {
-        start();
-    } else if args.cmd_report {
-        if args.flag_today{
-            ipc::query(&args);
-        } else {
-            println!("{}", "nothing now");
+    println!("{}", args);
+    match args.arg_command.as_ref() {
+        "start" => {
+            start()
+        },
+        "report" | "site" => {
+            ipc::query(&args)
+        },
+        _ => {
+            println!("{}", "Not found command")
         }
     }
 }

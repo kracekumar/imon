@@ -1,13 +1,14 @@
 use std::path::Path;
 use std::fs::File;
 use time;
-use rusqlite::{Connection, MappedRows, Row};
+use rusqlite::{Connection, MappedRows, Row, Statement};
 use rusqlite::types::{FromSql, ToSql};
 use chrono;
 use chrono::offset::utc::UTC;
 use chrono::NaiveDate;
 
 use rusqlite::{Result, Error};
+use TrafficTuple;
 
 
 fn get_current_datetime() -> chrono::DateTime<UTC>{
@@ -15,12 +16,12 @@ fn get_current_datetime() -> chrono::DateTime<UTC>{
 }
 
 
-fn get_current_date() -> NaiveDate{
+pub fn get_current_date() -> NaiveDate{
     get_current_datetime().date().naive_utc()
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Traffic {
     id: i32,
     domain_name: String,
@@ -31,13 +32,71 @@ pub struct Traffic {
 }
 
 
+fn unpack(stmt: &mut Statement, fill_date: bool, fill_audit_fields: bool, fill_id: bool) -> Vec<Traffic>{
+    let mut res: Vec<Traffic> = Vec::new();
+    // TODO: This is complicated, what's the better way?
+    if !fill_date & !fill_audit_fields & !fill_id{
+        // unpack(&mut stmt, false, false, false)
+        let audit_value = time::get_time();
+        let date = get_current_date();
+        let mut qs = stmt.query_map(&[], |row|{
+            Traffic{
+                id: row.get(0),
+                domain_name: row.get(1),
+                data_consumed_in_bytes: row.get(2),
+                date: row.get(3),
+                created_at: row.get(4),
+                updated_at: row.get(5),
+            }
+        }).unwrap();
+        for traffic in qs {
+            res.push(traffic.unwrap());
+        }
+    } else if fill_date & fill_audit_fields & fill_id{
+        // unpack(&mut stmt, true, true, false)
+        let date = get_current_date();
+        let audit_value = time::get_time();
+        let mut qs = stmt.query_map(&[], |row|{
+            Traffic{
+                id: 0,
+                domain_name: row.get(0),
+                data_consumed_in_bytes: row.get(1),
+                date: date,
+                created_at: audit_value,
+                updated_at: audit_value,
+            }
+        }).unwrap();
+        for traffic in qs {
+            res.push(traffic.unwrap());
+        }
+    } else if !fill_date & fill_audit_fields & fill_id {
+        // unpack(&mut stmt, false, true, true)
+        let audit_value = time::get_time();
+        let date = get_current_date();
+        let mut qs = stmt.query_map(&[], |row|{
+            Traffic{
+                id: 0,
+                domain_name: row.get(0),
+                data_consumed_in_bytes: row.get(1),
+                date: row.get(2),
+                created_at: audit_value,
+                updated_at: audit_value,
+            }
+        }).unwrap();
+        for traffic in qs {
+            res.push(traffic.unwrap());
+        }
+    } else {
+        // pass
+    }
+    res
+}
+
+
 impl Traffic{
-    fn to_tuple(self) -> (i32, String, i64, String){
-        /* `NaiveDate` doesn't implement `rustc_serialize::Decodable`
-        and `rustc_serialize::Decodable` so send tuple across the socket
-        */
-        (self.id, self.domain_name, self.data_consumed_in_bytes,
-         format!("{}", self.date.format("%Y-%m-%d")))
+    pub fn to_tuple(self) -> TrafficTuple{
+        (self.domain_name, self.data_consumed_in_bytes,
+        format!("{}", self.date.format("%Y-%m-%d")))
     }
 
     fn create(domain_name: String, data_consumed_in_bytes: i64, conn: &Connection){
@@ -97,33 +156,40 @@ values ($1, $2, $3, $4, $5)", &[&traffic.domain_name, &traffic.data_consumed_in_
             },
             None => {
                 /* create a new record */
-                println!("No record found");
                 Traffic::create(domain_name.clone(), data_consumed_in_bytes, conn);
             }
         }
     }
-
     // Reporting functions
     pub fn report_today(conn: &Connection) -> Vec<Traffic>{
         let date = get_current_date();
         let sql_stmt = format!("select id, domain_name, data_consumed_in_bytes, date, created_at, updated_at from
         traffic where date=\"{:?}\" order by data_consumed_in_bytes desc", date);
         let mut stmt = conn.prepare(&sql_stmt).unwrap();
-        let mut qs = stmt.query_map(&[], |row|{
-            Traffic{
-                id: row.get(0),
-                domain_name: row.get(1),
-                data_consumed_in_bytes: row.get(2),
-                date: row.get(3),
-                created_at: row.get(4),
-                updated_at: row.get(5),
-            }
-        }).unwrap();
-        let mut res: Vec<Traffic> = Vec::new();
-        for traffic in qs {
-            res.push(traffic.unwrap());
-        }
-        res
+        unpack(&mut stmt, false, false, false)
+    }
+
+    pub fn report_by_date_range(start_date: String, end_date: String, conn: &Connection) -> Vec<Traffic>{
+        let sql_stmt = format!("select domain_name, sum(data_consumed_in_bytes) as total from traffic where date between {:?} and {:?} group by domain_name order by total desc", start_date, end_date);
+        let mut stmt = conn.prepare(&sql_stmt).unwrap();
+        unpack(&mut stmt, true, true, true)
+    }
+
+    // site specific queries
+    pub fn filter_site(domain_name: String, conn: &Connection) -> Vec<Traffic>{
+        let sql_stmt = format!("select domain_name, data_consumed_in_bytes, date from traffic where domain_name={:?}",
+                               domain_name);
+        let mut stmt = conn.prepare(&sql_stmt).unwrap();
+        unpack(&mut stmt, false, true, true)
+    }
+
+    pub fn filter_site_by_date_range(domain_name: String, start_date: String,
+                                end_date: String, conn: &Connection) -> Vec<Traffic>{
+        let sql_stmt = format!("select domain_name, data_consumed_in_bytes, date from traffic where domain_name={:?} and
+date between {:?} and {:?}",
+                               domain_name, start_date, end_date);
+        let mut stmt = conn.prepare(&sql_stmt).unwrap();
+        unpack(&mut stmt, false, true, true)
     }
 }
 

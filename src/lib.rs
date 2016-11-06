@@ -1,3 +1,8 @@
+#![feature(plugin)]
+#![plugin(docopt_macros)]
+
+use std::fmt;
+
 extern crate rusqlite;
 extern crate time;
 extern crate chrono;
@@ -15,33 +20,54 @@ mod db;
 mod ipc;
 mod formatter;
 
+
+pub type TrafficTuple = (String, i64, String);
+
+
 #[derive(Debug, RustcDecodable, RustcEncodable)]
 pub struct Args {
-    flag_today: bool,
-    flag_week: bool,
-    arg_start_date: Option<String>,
-    arg_end_date: Option<String>,
-    cmd_start: bool,
-    cmd_report: bool,
+    flag_from: Option<String>,
+    flag_to: Option<String>,
+    arg_args: Vec<String>,
+    arg_command: String,
 }
 
-// #[derive(Debug, RustcDecodable, RustcEncodable)]
-// pub struct ShadowArgs {
-//     flag_today: bool,
-//     flag_week: bool,
-//     arg_start_date: Option<String>,
-//     arg_end_date: Option<String>,
-//     cmd_start: bool,
-//     cmd_report: bool,
-// }
+
+impl fmt::Display for Args{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result{
+        let mut message: String = "---\n".to_string();
+        message.push_str(&format!("Command: {}\n", self.arg_command));
+
+        if self.arg_args.len() > 0 {
+            message.push_str(&format!("Arguments: "));
+            for arg in self.arg_args.iter() {
+                message.push_str(&format!("{}", arg));
+            }
+            message.push('\n');
+        }
+
+        match self.flag_from{
+            Some(ref val) => {
+                message.push_str(&format!("Start date: {}\n", val));
+            },
+            None => {
+            }
+        }
+
+        match self.flag_to{
+            Some(ref val) => {
+                message.push_str(&format!("To date: {}\n", val));
+            },
+            None => {
+            }
+        }
+        message.push_str(&"---\n".to_string());
+        write!(f, "{}", message)
+    }
+}
 
 
-// impl ShadowArgs{
-//     pub fn from_args(args: &Args) -> ShadowArgs{
-//         ShadowArgs{flag_today: args.flag_today, flag_week: args.flag_week,
-//                    arg_start_date: args.arg_start_date,
-//                    arg_end_date: args.arg_end_date, cmd_start: args.cmd_start,
-//                    cmd_report: args.cmd_report
-//         }
-//     }
-// }
+#[derive(Debug, RustcDecodable, RustcEncodable)]
+pub struct HubResult{
+    result: Vec<TrafficTuple>
+}

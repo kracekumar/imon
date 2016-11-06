@@ -1,3 +1,6 @@
+use HubResult;
+
+
 fn convert_to_human_readable_format(count: u64) ->(f64, String){
     let units = ["B", "KB", "MB", "GB"];
     let base = 1024f64;
@@ -11,6 +14,23 @@ fn convert_to_human_readable_format(count: u64) ->(f64, String){
         lowest_count = lowest_count / base;
     }
     (lowest_count, final_unit.to_string())
+}
+
+
+pub fn display_report(hub_result: &HubResult, command: &str){
+    for (index, result) in hub_result.result.iter().enumerate(){
+        let (val, format) = convert_to_human_readable_format(result.1 as u64);
+        match command {
+            "site" => {
+                println!("{:?}| {}| {:?} {:?}| {:?}", index, result.0, val, format, result.2);
+            },
+            "report" => {
+                println!("{:?}| {}| {:?} {:?}", index, result.0, val, format);
+            },
+            _ => {
+            }
+        }
+    }
 }
 
 
