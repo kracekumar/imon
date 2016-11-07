@@ -1,16 +1,16 @@
 #[allow(dead_code)]
 #[allow(exceeding_bitshifts)]
 
-extern crate pcap;
-
 use std;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::sync::mpsc;
-use rusqlite::Connection;
 use std::collections::HashMap;
 
+use pcap;
+use rusqlite::Connection;
 use docopt::Docopt;
+
 use Args;
 use db;
 use ipc;
@@ -32,7 +32,6 @@ The mostly used commands are
     report   Report
     site     Display Site specific data
 ";
-
 
 
 #[derive(Debug, Clone)]
@@ -517,7 +516,13 @@ fn store_packet(ip: String, len: usize, domain_cache: &mut HashMap<String, Strin
             db::Traffic::create_or_update(domain_name.to_string(), len as i64, conn);
         },
         None => {
-            println!("IP is missing in cache{:?}", ip);
+            match ip.as_ref() {
+                "192.168.1.8" | "192.168.1.20" | "192.168.1.19" | "192.168.1.1" | "192.168.1.13"=> {
+                },
+                _ => {
+                    println!("IP is missing in cache{:?}", ip);
+                }
+            }
         }
     }
 }
@@ -582,39 +587,22 @@ fn decode(receiver: &mpsc::Receiver<Vec<u8>>, domain_cache: &mut HashMap<String,
 }
 
 
-fn depositer(receiver: &mpsc::Receiver<Traffic>){
-    loop{
-        let packet = receiver.recv().unwrap();
-        /*
-        3. Save to DB.
-         */
-    }
-}
-
-
 fn hub(){
     println!("Hub");
     ipc::listen();
 }
 
 
-fn fetcher(){
-    println!("Fetcher");
-}
-
-
 fn start(){
     println!("Start");
-    // ZMQ socket
-    // Pcap library capture
     let (sender, receiver) = mpsc::channel();
+
     let mut domain_cache: HashMap<String, String> = HashMap::new();
     let mut domain_cache_arc = Arc::new(domain_cache);
 
     let sniffer_handle: thread::JoinHandle<()>;
     let depositer_handle: thread::JoinHandle<()>;
     let hub_handle: thread::JoinHandle<()>;
-    let fetcher_handle: thread::JoinHandle<()>;
     // Start sniffer
     sniffer_handle = thread::spawn(move || {
         sniff(&sender);
@@ -627,22 +615,10 @@ fn start(){
     // Start Hub
     hub_handle = thread::spawn(|| hub());
     // Start fetcher
-    fetcher_handle = thread::spawn(|| fetcher());
     // Join all threads
     sniffer_handle.join().unwrap();
     depositer_handle.join().unwrap();
     hub_handle.join().unwrap();
-    fetcher_handle.join().unwrap();
-}
-
-
-fn top(){
-    println!("top");
-}
-
-
-fn invalid(){
-    println!("Invalid args")
 }
 
 

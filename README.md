@@ -12,6 +12,9 @@ Internet bandwidth data usage monitor.
 - [ ] Handle cache IP miss. Send DNS lookup.
 - [ ] Support audio/video sites.
 - [ ] Integrate with travis-ci
+- [ ] Write cached IPs to disk before shutting down
+- [ ] During startup, read IPs from file
+- [ ] IP cache invalidation
 
 ### Setup
 

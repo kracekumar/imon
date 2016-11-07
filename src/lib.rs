@@ -1,8 +1,6 @@
 #![feature(plugin)]
 #![plugin(docopt_macros)]
 
-use std::fmt;
-
 extern crate rusqlite;
 extern crate time;
 extern crate chrono;
@@ -11,10 +9,12 @@ extern crate bytes;
 extern crate rmp_serialize as msgpack;
 extern crate rustc_serialize;
 extern crate docopt;
+extern crate pcap;
+extern crate nix;
 
 use rustc_serialize::{Encodable, Decodable};
 use msgpack::encode::Encoder;
-
+use std::fmt;
 pub mod cli;
 mod db;
 mod ipc;
@@ -41,7 +41,7 @@ impl fmt::Display for Args{
         if self.arg_args.len() > 0 {
             message.push_str(&format!("Arguments: "));
             for arg in self.arg_args.iter() {
-                message.push_str(&format!("{}", arg));
+                message.push_str(&format!("{}, ", arg));
             }
             message.push('\n');
         }

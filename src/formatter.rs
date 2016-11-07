@@ -22,10 +22,10 @@ pub fn display_report(hub_result: &HubResult, command: &str){
         let (val, format) = convert_to_human_readable_format(result.1 as u64);
         match command {
             "site" => {
-                println!("{:?}| {}| {:?} {:?}| {:?}", index, result.0, val, format, result.2);
+                println!("{:?}| {}| {:.2?} {:?}| {:?}", index, result.0, val, format, result.2);
             },
             "report" => {
-                println!("{:?}| {}| {:?} {:?}", index, result.0, val, format);
+                println!("{:?}| {}| {:.2?} {:?}", index, result.0, val, format);
             },
             _ => {
             }
