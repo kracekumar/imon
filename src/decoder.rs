@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use packet::{PhysicalLayer, IPv4Packet, TCPPacket, UDPPacket, QSection, DNSAnswer, DNSPacket, DNSRequestType, PacketType, get_packet_type, get_dns_packet_type};
 use db;
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::{Ipv4Addr};
 use rusqlite::Connection;
 
 
@@ -218,7 +218,7 @@ fn extract_dns_answer(packet: &[u8]) -> Option<DNSAnswer>{
                 start = start + 2;
                 let mut rdata = Vec::new(); /* Assumption maximum of 6 IPs */
                 if ans_type == DNSRequestType::A || ans_type == DNSRequestType::CNAME {
-                    for i in 0..(rlength/4) {
+                    for _ in 0..(rlength/4) {
                         let ip_octets: &[u8] = &packet[(start) as usize .. (start + 4) as usize];
                         let address = format!("{:?}.{:?}.{:?}.{:?}",
                                               ip_octets[0], ip_octets[1], ip_octets[2], ip_octets[3]);
@@ -290,6 +290,7 @@ pub fn decode_dns_packet(packet: &[u8]) ->DNSPacket{
     dns_packet
 }
 
+
 fn to_ip_from_str(ip: &str) -> Ipv4Addr{
     Ipv4Addr::from_str(ip).unwrap()
 }
@@ -341,13 +342,12 @@ fn decode_packet(packet: Vec<u8>, domain_cache: &mut HashMap<String, String>, co
                     let dns_packet = decode_dns_packet(udp_packet.payload.unwrap());
                     if dns_packet.answer.rdata.len() > 0 {
                         let domain_name = get_domain_name(dns_packet.answer.name.clone());
-                        for (index, ip) in dns_packet.answer.rdata.iter().enumerate() {
+                        for ip in dns_packet.answer.rdata.iter() {
                             domain_cache.insert(ip.to_string(), domain_name.clone());
                         }
                     }
                 },
                 _ => {
-                    
                     store_packet(ipv4_packet.source_ip.to_string(), len, domain_cache, conn);
                 }
             }
@@ -369,8 +369,25 @@ fn test_decode_dns_packet(){
     let data: &[u8] = &[218, 188, 129, 128, 0, 1, 0, 1, 0, 0, 0, 0, 10, 107, 114, 97, 99, 101, 107, 117, 109, 97, 114, 3, 99, 111, 109, 0, 0, 1, 0, 1, 192, 12, 0, 1, 0, 1, 0, 0, 56, 64, 0, 4, 66, 6, 44, 4][..];
     let dns_packet = decode_dns_packet(&data);
 
-    println!("{:?}", dns_packet);
     assert_eq!(dns_packet.answer.ans_type,
                DNSRequestType::A);
     assert_eq!(dns_packet.answer.name, "kracekumar.com");
+}
+
+
+#[test]
+fn test_get_domain_name_with_sub_domain(){
+    assert_eq!(get_domain_name("mail.google.com".to_string()), "google.com");
+}
+
+
+#[test]
+fn test_get_domain_name_without_subdomain(){
+    assert_eq!(get_domain_name("kracekumar.com".to_string()), "kracekumar.com");
+}
+
+
+#[test]
+fn test_to_ip_from_str(){
+    assert_eq!(to_ip_from_str("8.8.0.0").octets(), [8u8, 8u8, 0u8, 0u8]);
 }

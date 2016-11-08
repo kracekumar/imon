@@ -36,15 +36,15 @@ fn handle_report(args: Args) -> Vec<TrafficTuple>{
                 val, to, &conn);
             println!("got {} results for date range", res.len());
             for traffic in res.iter(){
-                let mut val = traffic.clone().to_tuple();
+                let val = traffic.clone().to_tuple();
                 buf.push(val);
             }
         },
         None => {
             let res = db::Traffic::report_today(&conn);
             println!("got {} results", res.len());
-            for (index, traffic) in res.iter().enumerate(){
-                let mut val = traffic.clone().to_tuple();
+            for traffic in res.iter(){
+                let val = traffic.clone().to_tuple();
                 buf.push(val);
             }
         }
@@ -71,7 +71,7 @@ fn handle_site(args: Args) -> Vec<TrafficTuple>{
                     domain_name.to_string(), val.clone(), to.clone(), &conn);
                 println!("got {} results for {}", res.len(), domain_name);
                 for traffic in res.iter(){
-                    let mut val = traffic.clone().to_tuple();
+                    let val = traffic.clone().to_tuple();
                     buf.push(val);
                 }
             }
@@ -81,7 +81,7 @@ fn handle_site(args: Args) -> Vec<TrafficTuple>{
                 let res = db::Traffic::filter_site(domain_name.to_string(), &conn);
                 println!("got {} results for {}", res.len(), domain_name);
                 for traffic in res.iter(){
-                    let mut val = traffic.clone().to_tuple();
+                    let val = traffic.clone().to_tuple();
                     buf.push(val);
                 }
             }
@@ -154,13 +154,13 @@ pub fn listen(){
 fn send_to_hub(args: &Args) -> Vec<u8>{
     // TODO: Come up with accurate number
     let mut buf = [0u8; 120];
-    args.encode(&mut Encoder::new(&mut &mut buf[..]));
+    let _ = args.encode(&mut Encoder::new(&mut &mut buf[..]));
 
     // Send the data over the wire
     let mut stream = TcpStream::connect(DEFAULT_LISTEN_ADDR).unwrap();
     let _ = stream.write(&buf);
     let mut recv: Vec<u8> = Vec::new();
-    stream.read_to_end(&mut recv);
+    let _ = stream.read_to_end(&mut recv);
     recv
 }
 

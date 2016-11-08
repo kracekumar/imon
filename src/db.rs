@@ -1,13 +1,13 @@
 use std::path::Path;
 use std::fs::File;
 use time;
-use rusqlite::{Connection, MappedRows, Row, Statement};
-use rusqlite::types::{FromSql, ToSql};
+use rusqlite::{Connection, Statement};
+//use rusqlite::types::{FromSql};
 use chrono;
 use chrono::offset::utc::UTC;
 use chrono::NaiveDate;
 
-use rusqlite::{Result, Error};
+use rusqlite::{Result};
 use TrafficTuple;
 
 
@@ -37,9 +37,7 @@ fn unpack(stmt: &mut Statement, fill_date: bool, fill_audit_fields: bool, fill_i
     // TODO: This is complicated, what's the better way?
     if !fill_date & !fill_audit_fields & !fill_id{
         // unpack(&mut stmt, false, false, false)
-        let audit_value = time::get_time();
-        let date = get_current_date();
-        let mut qs = stmt.query_map(&[], |row|{
+        let qs = stmt.query_map(&[], |row|{
             Traffic{
                 id: row.get(0),
                 domain_name: row.get(1),
@@ -56,7 +54,7 @@ fn unpack(stmt: &mut Statement, fill_date: bool, fill_audit_fields: bool, fill_i
         // unpack(&mut stmt, true, true, false)
         let date = get_current_date();
         let audit_value = time::get_time();
-        let mut qs = stmt.query_map(&[], |row|{
+        let qs = stmt.query_map(&[], |row|{
             Traffic{
                 id: 0,
                 domain_name: row.get(0),
@@ -72,8 +70,7 @@ fn unpack(stmt: &mut Statement, fill_date: bool, fill_audit_fields: bool, fill_i
     } else if !fill_date & fill_audit_fields & fill_id {
         // unpack(&mut stmt, false, true, true)
         let audit_value = time::get_time();
-        let date = get_current_date();
-        let mut qs = stmt.query_map(&[], |row|{
+        let qs = stmt.query_map(&[], |row|{
             Traffic{
                 id: 0,
                 domain_name: row.get(0),
@@ -99,16 +96,17 @@ impl Traffic{
         format!("{}", self.date.format("%Y-%m-%d")))
     }
 
-    fn create(domain_name: String, data_consumed_in_bytes: i64, conn: &Connection){
+    fn create(domain_name: String, data_consumed_in_bytes: i64, conn: &Connection) -> i32{
         /* Create a new traffic object
          */
         let cur_datetime = time::get_time();
         let date = get_current_date();
         let traffic = Traffic{id: 0, domain_name: domain_name, data_consumed_in_bytes: data_consumed_in_bytes,
                               date: date, created_at: cur_datetime, updated_at: cur_datetime};
-        conn.execute("Insert into traffic (domain_name, data_consumed_in_bytes, date, created_at, updated_at)
+        let res = conn.execute("Insert into traffic (domain_name, data_consumed_in_bytes, date, created_at, updated_at)
 values ($1, $2, $3, $4, $5)", &[&traffic.domain_name, &traffic.data_consumed_in_bytes, &traffic.date,
                                 &traffic.created_at, &traffic.updated_at]);
+        res.unwrap()
     }
 
     fn filter(domain_name: String, conn: &Connection) -> Option<Result<Traffic>>{
@@ -132,12 +130,11 @@ values ($1, $2, $3, $4, $5)", &[&traffic.domain_name, &traffic.data_consumed_in_
         qs.next()
     }
 
-    fn update(record: Traffic, data_consumed_in_bytes: i64, conn: &Connection){
+    fn update(record: Traffic, data_consumed_in_bytes: i64, conn: &Connection) -> i32{
         /* Update the record
          */
         let cur_datetime = time::get_time();
         let quantity: i64 = record.data_consumed_in_bytes + data_consumed_in_bytes;
-        let date = get_current_date();
         let res = conn.execute("update traffic set data_consumed_in_bytes = $1, updated_at = $2 where id = $3",
                      &[&quantity, &cur_datetime, &record.id]).unwrap();
         if res == 1 {
@@ -145,6 +142,7 @@ values ($1, $2, $3, $4, $5)", &[&traffic.domain_name, &traffic.data_consumed_in_
         } else {
             println!("Update failed");
         }
+        res
     }
     
     pub fn create_or_update(domain_name: String, data_consumed_in_bytes: i64, conn: &Connection){
@@ -215,7 +213,7 @@ pub fn create_conn() -> Connection{
         Connection::open(path).unwrap()
     } else {
         match File::create(path) {
-            Ok(file) => {
+            Ok(_) => {
                 let conn = Connection::open(path).unwrap();
                 create_db(&conn);
                 conn

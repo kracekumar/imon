@@ -1,15 +1,12 @@
 #[allow(dead_code)]
 #[allow(exceeding_bitshifts)]
 
-use std;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
 use std::thread;
 use std::sync::mpsc;
 use std::collections::HashMap;
-use std::str::FromStr;
 
 use pcap;
-use rusqlite::Connection;
 use docopt::Docopt;
 
 use decoder::{decode};
@@ -47,15 +44,6 @@ Examples - Querying
 ";
 
 
-
-
-fn start_hub(){
-    println!("starting the pcap")
-}
-
-
-
-
 fn sniff(sender: &mpsc::Sender<Vec<u8>>){
     for device in pcap::Device::list().unwrap() {
         if device.name == "wlan0" {
@@ -85,7 +73,7 @@ fn start(){
     println!("Start");
     let (sender, receiver) = mpsc::channel();
 
-    let mut domain_cache: HashMap<String, String> = HashMap::new();
+    let domain_cache: HashMap<String, String> = HashMap::new();
     let mut domain_cache_arc = Arc::new(domain_cache);
 
     let sniffer_handle: thread::JoinHandle<()>;

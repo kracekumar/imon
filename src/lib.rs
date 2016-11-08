@@ -11,8 +11,7 @@ extern crate rustc_serialize;
 extern crate docopt;
 extern crate pcap;
 
-use rustc_serialize::{Encodable, Decodable};
-use msgpack::encode::Encoder;
+// use rustc_serialize::{Encodable, Decodable};
 use std::fmt;
 pub mod cli;
 pub mod decoder;
