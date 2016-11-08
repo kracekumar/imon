@@ -10,15 +10,16 @@ extern crate rmp_serialize as msgpack;
 extern crate rustc_serialize;
 extern crate docopt;
 extern crate pcap;
-extern crate nix;
 
 use rustc_serialize::{Encodable, Decodable};
 use msgpack::encode::Encoder;
 use std::fmt;
 pub mod cli;
-mod db;
-mod ipc;
-mod formatter;
+pub mod decoder;
+pub mod packet;
+pub mod db;
+pub mod ipc;
+pub mod formatter;
 
 
 pub type TrafficTuple = (String, i64, String);

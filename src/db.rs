@@ -141,7 +141,7 @@ values ($1, $2, $3, $4, $5)", &[&traffic.domain_name, &traffic.data_consumed_in_
         let res = conn.execute("update traffic set data_consumed_in_bytes = $1, updated_at = $2 where id = $3",
                      &[&quantity, &cur_datetime, &record.id]).unwrap();
         if res == 1 {
-            println!("Updated succedded: {}", quantity);
+            println!("Updated succedded for {}: {}", record.domain_name, quantity);
         } else {
             println!("Update failed");
         }

@@ -40,5 +40,5 @@ fn test_convert_to_human_readable_format(){
     assert_eq!(convert_to_human_readable_format(1024), (1f64, "KB".to_string()));
     assert_eq!(convert_to_human_readable_format(10249), (10.0087890625, "KB".to_string()));
     assert_eq!(convert_to_human_readable_format(10249000), (9.774208068847656, "MB".to_string()));
-    assert_eq!(convert_to_human_readable_format(10249000000), (9774.208068847656, "GB".to_string()));
+    assert_eq!(convert_to_human_readable_format(10249000000), (9.54512506723404, "GB".to_string()));
 }

@@ -10,7 +10,7 @@ mioco = "*"
 bytes = "0.2.11"
 docopt = "0.6.86"
 docopt_macros = "0.6.86"
-rustc-serialize = "0.3"  # if you're using `derive(RustcDecodable)`
+rustc-serialize = "0.3"
 rmp-serialize = "0.7.0"
 
 [dependencies.rusqlite]
@@ -22,4 +22,3 @@ git = "https://github.com/ebfull/pcap"
 
 [dependencies.rmp]
 rmp = "^0.7"
-
