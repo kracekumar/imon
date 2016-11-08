@@ -391,3 +391,40 @@ fn test_get_domain_name_without_subdomain(){
 fn test_to_ip_from_str(){
     assert_eq!(to_ip_from_str("8.8.0.0").octets(), [8u8, 8u8, 0u8, 0u8]);
 }
+
+
+#[test]
+fn test_decode_physical_layer(){
+    let data: &[u8] = &[220, 133, 222, 17, 81, 47, 104, 5, 202, 22, 65, 94, 8, 0, 69, 0, 0, 52, 50, 43, 64, 0, 48, 6, 69, 69, 52, 206, 128, 244, 10, 0, 19, 146, 1, 187][..];
+    let packet = decode_physical_layer(data);
+
+    assert_eq!(packet.dst, "dc:85:de:11:51:2f");
+    assert_eq!(packet.src, "68:05:ca:16:41:5e");
+    assert_eq!(packet.packet_type, PacketType::IPv4);
+}
+
+
+#[test]
+fn test_decode_ipv4_tcp_packet(){
+    let data: &[u8] = &[69, 0, 0, 52, 107, 66, 64, 0, 49, 6, 107, 70, 54, 84, 31, 86, 10, 0, 19, 146, 1, 187, 213, 48, 48, 246, 196, 23, 27, 172, 87, 70, 128, 16, 0, 136, 135, 54, 0, 0, 1, 1, 8, 10, 81, 238, 242, 115, 0, 180, 247, 192][..];
+    let payload = &[1, 187, 213, 48, 48, 246, 196, 23, 27, 172, 87, 70, 128, 16, 0, 136, 135, 54, 0, 0, 1, 1, 8, 10, 81, 238, 242, 115, 0, 180, 247, 192][..];
+    let packet = decode_ipv4_packet(data);
+
+    assert_eq!(packet.protocol, PacketType::TCP);
+    assert_eq!(packet.source_ip, "54.84.31.86");
+    assert_eq!(packet.destination_ip, "10.0.19.146");
+    assert_eq!(packet.payload, payload);
+}
+
+
+#[test]
+fn test_decode_ipv4_udp_packet(){
+    let data: &[u8] = &[69, 0, 0, 58, 0, 0, 64, 0, 59, 17, 114, 58, 172, 217, 3, 14, 10, 0, 19, 146, 1, 187, 232, 39, 0, 38, 184, 243, 0, 7, 27, 203, 134, 192, 46, 30, 4, 142, 139, 9, 153, 210, 199, 180, 214, 34, 108, 203, 210, 200, 115, 249, 145, 178, 39, 96, 138, 191][..];
+    let payload = &[1, 187, 232, 39, 0, 38, 184, 243, 0, 7, 27, 203, 134, 192, 46, 30, 4, 142, 139, 9, 153, 210, 199, 180, 214, 34, 108, 203, 210, 200, 115, 249, 145, 178, 39, 96, 138, 191][..];
+    let packet = decode_ipv4_packet(data);
+    
+    assert_eq!(packet.protocol, PacketType::UDP);
+    assert_eq!(packet.source_ip, "172.217.3.14");
+    assert_eq!(packet.destination_ip, "10.0.19.146");
+    assert_eq!(packet.payload, payload);
+}

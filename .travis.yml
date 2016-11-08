@@ -1,12 +1,29 @@
 language: rust
+addons:
+  apt:
+    packages:
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev
+      - cmake
+      - gcc
+      - binutils-dev
+
 rust:
   - nightly
 before_install:
   - sudo apt-get install libpcap-dev
 after_success: |
-  sudo apt-get install libcurl4-openssl-dev libelf-dev libdw-dev &&
   wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
-  tar xzf master.tar.gz && mkdir kcov-master/build && cd kcov-master/build && cmake .. && make &&
-  sudo make install && cd ../.. &&
-  kcov --exclude-pattern=/.cargo target/kcov target/debug/imon-*
-  bash <(curl -s https://codecov.io/bash) -s target/kcov
+  tar xzf master.tar.gz &&
+  cd kcov-master &&
+  mkdir build &&
+  cd build &&
+  cmake .. &&
+  make &&
+  sudo make install &&
+  cd ../.. &&
+  rm -rf kcov-master &&
+  kcov --exclude-pattern=/.cargo,/usr/lib --verify target/cov target/debug/imon-* &&
+  bash <(curl -s https://codecov.io/bash) &&
+  echo "Uploaded code coverage"
