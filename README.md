@@ -80,8 +80,8 @@ Examples - Querying
 
 - [ ] Add unit tests
 - [ ] Add integration tests
-- [X] Publish to crate
-- [ ] Add command line usage documentation
+- [ ] Publish to crate
+- [X] Add command line usage documentation
 - [X] Filter local network traffic
 - [ ] Add a way to monitor Ethernet port
 - [ ] Handle cache IP miss. Send DNS lookup.
@@ -94,7 +94,7 @@ Examples - Querying
 - [ ] Support IPv6 packets!
 - [ ] Handle socket connection failure when daemon is down
 - [ ] Handle input argument validation
-- [ ] Move decoding logic to separate file
+- [X] Move decoding logic to separate file
 - [ ] Use multiple threads to handle the packet decoding
 
 ### Autostart
