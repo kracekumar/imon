@@ -134,9 +134,10 @@ fn decode_tcp_packet(packet: &[u8]) -> TCPPacket{
     let rst = set_or_unset(flags[5]);
     let syn = set_or_unset(flags[6]);
     let fin = set_or_unset(flags[7]);
-    TCPPacket{source_port: source_port, destination_port: destination_port, seq_num: seq_num,
-              ack_num: ack_num, data_offset: data_offset, window_size: window_size,
-              checksum: checksum, options: options, payload: payload, urg: urg, ack: ack, psh: psh,
+    TCPPacket{source_port: source_port, destination_port: destination_port,
+              seq_num: seq_num, ack_num: ack_num, data_offset: data_offset,
+              window_size: window_size, checksum: checksum, options: options,
+              payload: payload, urg: urg, ack: ack, psh: psh,
               syn: syn, fin: fin, raw: &packet, rst: rst}
 }
 
@@ -152,6 +153,7 @@ fn decode_udp_packet(packet: &[u8]) -> UDPPacket{
               length: length, checksum: checksum, payload: payload,
               raw: &packet}
 }
+
 
 fn extract_dns_name(packet: &[u8]) -> (String, u16){
     let mut start: u16 = 1;
@@ -427,4 +429,26 @@ fn test_decode_ipv4_udp_packet(){
     assert_eq!(packet.source_ip, "172.217.3.14");
     assert_eq!(packet.destination_ip, "10.0.19.146");
     assert_eq!(packet.payload, payload);
+}
+
+
+#[test]
+fn test_decode_tcp_packet(){
+    let data: &[u8] = &[1, 187, 200, 240, 34, 229, 22, 161, 126, 21, 184, 112, 128, 16, 0, 136, 191, 245, 0, 0, 1, 1, 8, 10, 63, 153, 161, 78, 1, 63, 222, 196][..];
+    let packet = decode_tcp_packet(data);
+
+    assert_eq!(packet.source_port, 443);
+    assert_eq!(packet.destination_port, 51440);
+}
+
+
+#[test]
+fn test_decode_udp_packet(){
+    let data: &[u8] = &[225, 21, 225, 21, 0, 52, 119, 89, 83, 112, 111, 116, 85, 100, 112, 48, 12, 217, 255, 25, 204, 87, 43, 224, 0, 1, 0, 4, 72, 149, 194, 3, 171, 193, 205, 41, 52, 16, 51, 152, 96, 193, 11, 171, 62, 97, 183, 83, 85, 15, 111, 104][..];
+    let payload: &[u8] = &[83, 112, 111, 116, 85, 100, 112, 48, 12, 217, 255, 25, 204, 87, 43, 224, 0, 1, 0, 4, 72, 149, 194, 3, 171, 193, 205, 41, 52, 16, 51, 152, 96, 193, 11, 171, 62, 97, 183, 83, 85, 15, 111, 104][..];
+    let packet = decode_udp_packet(data);
+
+    assert_eq!(packet.source_port, 57621);
+    assert_eq!(packet.destination_port, 57621);
+    assert_eq!(packet.payload.unwrap(), payload);
 }
