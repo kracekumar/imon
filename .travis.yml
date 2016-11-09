@@ -8,6 +8,7 @@ addons:
       - cmake
       - gcc
       - binutils-dev
+      - libssh2-sys
 
 rust:
   - nightly
