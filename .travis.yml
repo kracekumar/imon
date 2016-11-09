@@ -13,16 +13,19 @@ rust:
   - nightly
 before_install:
   - sudo apt-get install libpcap-dev
-after_success: |
-  wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
-  tar xzf master.tar.gz &&
-  cd kcov-master &&
-  mkdir build &&
-  cd build &&
-  cmake .. &&
-  make &&
-  sudo make install &&
-  cd ../.. &&
-  rm -rf kcov-master &&
-  kcov --coveralls-id=$TRAVIS_JOB_ID --exclude-pattern=/.cargo,/usr/lib --verify target/cov target/debug/imon-*
-  echo "Uploaded to coverall"
+
+before_script:
+  - |
+      cargo install cargo-travis &&
+      export PATH=$HOME/.cargo/bin:$PATH
+
+# the main build
+script:
+  - |
+      cargo build &&
+      cargo test &&
+      cargo bench &&
+      cargo --only stable doc
+after_success:
+# measure code coverage and upload to coveralls.io
+  - cargo coveralls
