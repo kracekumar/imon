@@ -20,6 +20,7 @@ after_success: |
   make &&
   sudo make install &&
   cd ../.. &&
+  export RUST_BACKTRACE=1
   kcov --exclude-pattern=/.cargo target/kcov target/debug/deps/imon-*;
   kcov --exclude-pattern=/.cargo target/kcov target/debug/db_integration-*;
   bash <(curl -s https://codecov.io/bash) &&
