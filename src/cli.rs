@@ -83,7 +83,7 @@ fn start(){
     sniffer_handle = thread::spawn(move || {
         sniff(&sender);
     });
-    let conn = db::create_conn();
+    let conn = db::create_conn(None);
     // Start depositer
     depositer_handle = thread::spawn(move || {
         decode(&receiver, Arc::get_mut(&mut domain_cache_arc).unwrap(), &conn);

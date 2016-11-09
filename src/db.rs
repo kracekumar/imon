@@ -145,16 +145,18 @@ values ($1, $2, $3, $4, $5)", &[&traffic.domain_name, &traffic.data_consumed_in_
         res
     }
     
-    pub fn create_or_update(domain_name: String, data_consumed_in_bytes: i64, conn: &Connection){
+    pub fn create_or_update(domain_name: String, data_consumed_in_bytes: i64, conn: &Connection) -> (String, i32){
         let qs = Traffic::filter(domain_name.clone(), conn);
         match qs{
             Some(record) => {
                 /* Update the record */
-                Traffic::update(record.unwrap(), data_consumed_in_bytes, conn);
+                let res = Traffic::update(record.unwrap(), data_consumed_in_bytes, conn);
+                ("update".to_string(), res)
             },
             None => {
                 /* create a new record */
-                Traffic::create(domain_name.clone(), data_consumed_in_bytes, conn);
+                let res = Traffic::create(domain_name.clone(), data_consumed_in_bytes, conn);
+                ("create".to_string(), res)
             }
         }
     }
@@ -206,9 +208,13 @@ updated_at datetime not null
 }
 
 
-pub fn create_conn() -> Connection{
+pub fn create_conn(file_path: Option<&'static str>) -> Connection{
     // TODO: Refactor to read from config file
-    let path = Path::new("imon.db");
+    let path = match file_path{
+        Some(val) => val,
+        None => "imon.db"
+    };
+    let path = Path::new(path);
     if path.exists() {
         Connection::open(path).unwrap()
     } else {

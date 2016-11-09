@@ -20,7 +20,7 @@ fn listend_addr() -> SocketAddr {
 
 fn handle_report(args: Args) -> Vec<TrafficTuple>{
     let mut buf: Vec<TrafficTuple> = Vec::new();
-    let conn = db::create_conn();
+    let conn = db::create_conn(None);
     match args.flag_from{
         Some(val) => {
             let to = match args.flag_to {
@@ -55,7 +55,7 @@ fn handle_report(args: Args) -> Vec<TrafficTuple>{
 
 fn handle_site(args: Args) -> Vec<TrafficTuple>{
     let mut buf: Vec<TrafficTuple> = Vec::new();
-    let conn = db::create_conn();
+    let conn = db::create_conn(None);
     match args.flag_from{
         Some(val) => {
             let to = match args.flag_to {

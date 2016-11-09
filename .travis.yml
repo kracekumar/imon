@@ -21,5 +21,6 @@ after_success: |
   sudo make install &&
   cd ../.. &&
   kcov --exclude-pattern=/.cargo target/kcov target/debug/deps/imon-*;
+  kcov --exclude-pattern=/.cargo target/kcov target/debug/db_integration-*;
   bash <(curl -s https://codecov.io/bash) &&
   echo "Uploaded code coverage"
