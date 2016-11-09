@@ -166,6 +166,7 @@ values ($1, $2, $3, $4, $5)", &[&traffic.domain_name, &traffic.data_consumed_in_
             }
         }
     }
+
     // Reporting functions
     pub fn report_today(conn: &Connection) -> Vec<Traffic>{
         let date = get_current_date();
@@ -220,20 +221,6 @@ pub fn delete_table(conn: &Connection){
 }
 
 
-fn does_table_exists(conn: &Connection) -> i32{
-    /*check if the table exists */
-    let res = conn.execute("SELECT * FROM sqlite_master WHERE name ='traffic';", &[]);
-    println!("Res: {:?}", res);
-    match res{
-        Ok(val) => val,
-        Err(e) => {
-            println!("Err: {:?}", e);
-            -1
-        }
-    }
-}
-
-
 pub fn create_conn(file_path: Option<&'static str>) -> Connection{
     // TODO: Refactor to read from config file
     let path = match file_path{
@@ -242,15 +229,7 @@ pub fn create_conn(file_path: Option<&'static str>) -> Connection{
     };
     let path = Path::new(path);
     if path.exists() {
-        let conn = Connection::open(path).unwrap();
-        let res = does_table_exists(&conn);
-        println!("res: {:?}", res);
-        if res == 1{
-            conn
-        } else {
-            create_table(&conn);
-            conn
-        }
+        Connection::open(path).unwrap()
     } else {
         match File::create(path) {
             Ok(_) => {

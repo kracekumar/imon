@@ -78,15 +78,15 @@ Examples - Querying
 
 ### TODO
 
-- [ ] Add unit tests
-- [ ] Add integration tests
+- [x] Add unit tests
+- [x] Add integration tests
 - [ ] Publish to crate
 - [X] Add command line usage documentation
 - [X] Filter local network traffic
 - [ ] Add a way to monitor Ethernet port
 - [ ] Handle cache IP miss. Send DNS lookup.
 - [ ] Support audio/video sites.
-- [ ] Integrate with travis-ci
+- [x] Integrate with travis-ci
 - [ ] Write cached IPs to disk before shutting down
 - [ ] During startup, read IPs from file
 - [ ] IP cache invalidation
