@@ -36,3 +36,17 @@ fn test_insert_or_update(){
 
     tear_down();
 }
+
+
+#[test]
+fn test_report_today(){
+    let conn = create_test_conn();
+    let res = imon::db::Traffic::create_or_update("kracekumar.com".to_string(), 23000, &conn);
+
+    let traffic = imon::db::Traffic::report_today(&conn);
+
+    assert_eq!(traffic[0].domain_name, "kracekumar.com".to_string());
+    assert_eq!(traffic[0].data_consumed_in_bytes, 23000);
+
+    tear_down();
+}

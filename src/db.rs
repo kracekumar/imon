@@ -23,10 +23,10 @@ pub fn get_current_date() -> NaiveDate{
 
 #[derive(Debug, Clone)]
 pub struct Traffic {
-    id: i32,
-    domain_name: String,
-    data_consumed_in_bytes: i64,
-    date: NaiveDate,
+    pub id: i32,
+    pub domain_name: String,
+    pub data_consumed_in_bytes: i64,
+    pub date: NaiveDate,
     created_at: time::Timespec,
     updated_at: time::Timespec,
 }
@@ -106,7 +106,13 @@ impl Traffic{
         let res = conn.execute("Insert into traffic (domain_name, data_consumed_in_bytes, date, created_at, updated_at)
 values ($1, $2, $3, $4, $5)", &[&traffic.domain_name, &traffic.data_consumed_in_bytes, &traffic.date,
                                 &traffic.created_at, &traffic.updated_at]);
-        res.unwrap()
+        match res{
+            Ok(val) => val,
+            Err(e) => {
+                println!("Error: {:?}", e);
+                0i32
+            }
+        }
     }
 
     fn filter(domain_name: String, conn: &Connection) -> Option<Result<Traffic>>{
