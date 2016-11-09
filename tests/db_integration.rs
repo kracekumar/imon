@@ -22,7 +22,7 @@ fn tear_down(conn: &rusqlite::Connection){
 }
 
 
-fn test_insert_or_update(){
+fn insert_or_update(){
     let conn = create_test_conn();
     let res = imon::db::Traffic::create_or_update("kracekumar".to_string(), 23000, &conn);
 
@@ -35,13 +35,13 @@ fn test_insert_or_update(){
     assert_eq!(res.1, 1);
 
     tear_down(&conn);
-    let val = conn.close();
+    let _ = conn.close();
 }
 
 
-fn test_report_today(){
+fn report_today(){
     let conn = create_test_conn();
-    let res = imon::db::Traffic::create_or_update("kracekumar.com".to_string(), 23000, &conn);
+    let _ = imon::db::Traffic::create_or_update("kracekumar.com".to_string(), 23000, &conn);
 
     let traffic = imon::db::Traffic::report_today(&conn);
 
@@ -49,11 +49,58 @@ fn test_report_today(){
     assert_eq!(traffic[0].data_consumed_in_bytes, 23000);
 
     tear_down(&conn);
-    let val = conn.close();
+    let _ = conn.close();
+}
+
+
+fn report_by_date_range(){
+    let conn = create_test_conn();
+    let _ = imon::db::Traffic::create_or_update("kracekumar.com".to_string(), 23000, &conn);
+
+    let date = format!("{}", imon::db::get_current_date().format("%Y-%m-%d"));
+    let traffic = imon::db::Traffic::report_by_date_range(date.clone(), date, &conn);
+
+    assert_eq!(traffic[0].domain_name, "kracekumar.com".to_string());
+    assert_eq!(traffic[0].data_consumed_in_bytes, 23000);
+
+    tear_down(&conn);
+    let _ = conn.close();
+}
+
+
+fn filter_site(){
+    let conn = create_test_conn();
+    let _ = imon::db::Traffic::create_or_update("kracekumar.com".to_string(), 23000, &conn);
+
+    let traffic = imon::db::Traffic::filter_site("kracekumar.com".to_string(), &conn);
+
+    assert_eq!(traffic[0].domain_name, "kracekumar.com".to_string());
+    assert_eq!(traffic[0].data_consumed_in_bytes, 23000);
+
+    tear_down(&conn);
+    let _ = conn.close();
+}
+
+
+fn filter_site_by_date_range(){
+    let conn = create_test_conn();
+    let _ = imon::db::Traffic::create_or_update("kracekumar.com".to_string(), 23000, &conn);
+
+    let date = format!("{}", imon::db::get_current_date().format("%Y-%m-%d"));
+    let traffic = imon::db::Traffic::filter_site_by_date_range("kracekumar.com".to_string(), date.clone(), date, &conn);
+
+    assert_eq!(traffic[0].domain_name, "kracekumar.com".to_string());
+    assert_eq!(traffic[0].data_consumed_in_bytes, 23000);
+
+    tear_down(&conn);
+    let _ = conn.close();
 }
 
 
 fn main(){
-    test_report_today();
-    test_insert_or_update();
+    insert_or_update();
+    report_today();
+    report_by_date_range();
+    filter_site();
+    filter_site_by_date_range();
 }
