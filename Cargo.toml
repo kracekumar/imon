@@ -23,10 +23,6 @@ git = "https://github.com/ebfull/pcap"
 [dependencies.rmp]
 rmp = "^0.7"
 
-[lib]
-name = "imon"
-test = true
-
 [[bin]]
 name = "imon"
 test = true

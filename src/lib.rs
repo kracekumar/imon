@@ -71,9 +71,3 @@ impl fmt::Display for Args{
 pub struct HubResult{
     result: Vec<TrafficTuple>
 }
-
-
-#[test]
-fn t(){
-    assert!(true, true);
-}
