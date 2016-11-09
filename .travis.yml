@@ -5,10 +5,10 @@ addons:
       - libcurl4-openssl-dev
       - libelf-dev
       - libdw-dev
-      - cmake
-      - gcc
       - binutils-dev
-      - libssh2-sys
+      - cmake
+    sources:
+      - kalakris-cmake
 
 rust:
   - nightly
