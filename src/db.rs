@@ -200,7 +200,7 @@ date between {:?} and {:?}",
 }
 
 
-fn create_db(conn: &Connection){
+fn create_table(conn: &Connection){
     /* Create SQLite db */
     conn.execute("create table traffic (
 id integer primary key,
@@ -214,6 +214,26 @@ updated_at datetime not null
 }
 
 
+pub fn delete_table(conn: &Connection){
+    /* Delete tables */
+    conn.execute("drop table traffic;", &[]).unwrap();
+}
+
+
+fn does_table_exists(conn: &Connection) -> i32{
+    /*check if the table exists */
+    let res = conn.execute("SELECT * FROM sqlite_master WHERE name ='traffic';", &[]);
+    println!("Res: {:?}", res);
+    match res{
+        Ok(val) => val,
+        Err(e) => {
+            println!("Err: {:?}", e);
+            -1
+        }
+    }
+}
+
+
 pub fn create_conn(file_path: Option<&'static str>) -> Connection{
     // TODO: Refactor to read from config file
     let path = match file_path{
@@ -222,12 +242,20 @@ pub fn create_conn(file_path: Option<&'static str>) -> Connection{
     };
     let path = Path::new(path);
     if path.exists() {
-        Connection::open(path).unwrap()
+        let conn = Connection::open(path).unwrap();
+        let res = does_table_exists(&conn);
+        println!("res: {:?}", res);
+        if res == 1{
+            conn
+        } else {
+            create_table(&conn);
+            conn
+        }
     } else {
         match File::create(path) {
             Ok(_) => {
                 let conn = Connection::open(path).unwrap();
-                create_db(&conn);
+                create_table(&conn);
                 conn
             },
             Err(err) => {

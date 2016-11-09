@@ -26,3 +26,8 @@ rmp = "^0.7"
 [[bin]]
 name = "imon"
 test = true
+
+[[test]]
+name = "db_integration"
+harness = false
+test = true

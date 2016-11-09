@@ -12,7 +12,8 @@ fn create_test_conn() -> rusqlite::Connection{
 }
 
 
-fn tear_down(){
+fn tear_down(conn: &rusqlite::Connection){
+    imon::db::delete_table(conn);
     let res = fs::remove_file(DB_PATH);
     match res {
         Ok(_) => {},
@@ -21,7 +22,6 @@ fn tear_down(){
 }
 
 
-#[test]
 fn test_insert_or_update(){
     let conn = create_test_conn();
     let res = imon::db::Traffic::create_or_update("kracekumar".to_string(), 23000, &conn);
@@ -34,11 +34,11 @@ fn test_insert_or_update(){
     assert_eq!(res.0, "update".to_string());
     assert_eq!(res.1, 1);
 
-    tear_down();
+    tear_down(&conn);
+    let val = conn.close();
 }
 
 
-#[test]
 fn test_report_today(){
     let conn = create_test_conn();
     let res = imon::db::Traffic::create_or_update("kracekumar.com".to_string(), 23000, &conn);
@@ -48,5 +48,12 @@ fn test_report_today(){
     assert_eq!(traffic[0].domain_name, "kracekumar.com".to_string());
     assert_eq!(traffic[0].data_consumed_in_bytes, 23000);
 
-    tear_down();
+    tear_down(&conn);
+    let val = conn.close();
+}
+
+
+fn main(){
+    test_report_today();
+    test_insert_or_update();
 }
