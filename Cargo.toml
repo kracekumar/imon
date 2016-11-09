@@ -25,3 +25,4 @@ rmp = "^0.7"
 
 [lib]
 name = "imon"
+test = true
