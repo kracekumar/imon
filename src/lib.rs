@@ -10,9 +10,11 @@ extern crate rmp_serialize as msgpack;
 extern crate rustc_serialize;
 extern crate docopt;
 extern crate pcap;
+#[macro_use] extern crate log;
+extern crate env_logger;
 
-// use rustc_serialize::{Encodable, Decodable};
 use std::fmt;
+
 pub mod cli;
 pub mod decoder;
 pub mod packet;

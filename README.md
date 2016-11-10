@@ -1,3 +1,5 @@
+imon | [![Build Status](https://travis-ci.org/kracekumar/imon.svg)](https://travis-ci.org/kracekumar/imon) | [![codecov](https://codecov.io/gh/kracekumar/imon/branch/master/graph/badge.svg)](https://codecov.io/gh/kracekumar/imon)
+
 Internet bandwidth data usage monitor by domain.
 
 ### Setup
@@ -5,12 +7,14 @@ Internet bandwidth data usage monitor by domain.
 - The program works with rust nightly. Make sure you have `rust` installed.
 Use [rustup](https://www.rustup.rs).
 
+- Install `libpcap-dev` and `libsqlite` for your OS.
+
 - Clone and build the program from source.
 
 ``` bash
-$git clone git@github.com:kracekumar/imon.git
-$cd imon
-$cargo build
+git clone git@github.com:kracekumar/imon.git
+cd imon
+cargo build
 ```
 
 - Start the daemon. The daemon captures `WiFi` packet, so you need to have access to the device.
@@ -18,29 +22,14 @@ $cargo build
 
 - Open an another terminal and go the project root directory. Now query the daemon.
 
-``` bash
-./target/debug/imon site google.com zulipchat.com duckduckgo.com
+```bash
+./target/debug/imon site google.com
 ---
 Command: site
-Arguments: google.com, zulipchat.com, duckduckgo.com,
+Arguments: google.com,
 ---
 
 0| google.com| 1.07 "MB"| "2016-11-02"
-1| google.com| 7.18 "MB"| "2016-11-03"
-2| google.com| 1.03 "MB"| "2016-11-04"
-3| google.com| 1.08 "MB"| "2016-11-05"
-4| google.com| 9.23 "MB"| "2016-11-06"
-5| google.com| 6.22 "MB"| "2016-11-07"
-6| zulipchat.com| 2.36 "MB"| "2016-11-03"
-7| zulipchat.com| 1.83 "MB"| "2016-11-05"
-8| zulipchat.com| 3.48 "MB"| "2016-11-06"
-9| duckduckgo.com| 468.15 "KB"| "2016-11-02"
-10| duckduckgo.com| 1.29 "MB"| "2016-11-03"
-11| duckduckgo.com| 365.41 "KB"| "2016-11-04"
-12| duckduckgo.com| 1.10 "MB"| "2016-11-05"
-13| duckduckgo.com| 462.53 "KB"| "2016-11-06"
-14| duckduckgo.com| 2.55 "MB"| "2016-11-07"
-
 ```
 
 ### Help
@@ -90,7 +79,7 @@ Examples - Querying
 - [ ] Write cached IPs to disk before shutting down
 - [ ] During startup, read IPs from file
 - [ ] IP cache invalidation
-- [ ] Replace `println` with log.
+- [X] Replace `println` with log.
 - [ ] Support IPv6 packets!
 - [ ] Handle socket connection failure when daemon is down
 - [ ] Handle input argument validation

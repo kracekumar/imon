@@ -287,7 +287,7 @@ pub fn decode_dns_packet(packet: &[u8]) ->DNSPacket{
                                qdcount: qdcount, ancount: ancount, nscount: nscount,
                                arcount: arcount, qsection: qsection, answer: answer};
 
-    println!("{:?}", dns_packet);
+    info!("{:?}", dns_packet);
 
     dns_packet
 }
@@ -302,7 +302,7 @@ fn store_packet(ip: String, len: usize, domain_cache: &mut HashMap<String, Strin
     let val = domain_cache.get(&ip);
     match val{
         Some(domain_name) => {
-            println!("Data for {:?} of {:?} bytes", domain_name, len);
+            info!("Data for {:?} of {:?} bytes", domain_name, len);
             db::Traffic::create_or_update(domain_name.to_string(), len as i64, conn);
         },
         None => {
@@ -360,8 +360,11 @@ fn decode_packet(packet: Vec<u8>, domain_cache: &mut HashMap<String, String>, co
 
 pub fn decode(receiver: &mpsc::Receiver<Vec<u8>>, domain_cache: &mut HashMap<String, String>, conn: &Connection){
     loop{
-        let packet = receiver.recv().unwrap();
-        decode_packet(packet, domain_cache, conn);
+        let packet = receiver.recv();
+        match packet{
+            Ok(val) => decode_packet(val, domain_cache, conn),
+            Err(e) => info!("{:?}", e),
+        }
     }
 }
 

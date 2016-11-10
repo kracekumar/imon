@@ -1,5 +1,7 @@
 extern crate imon;
 extern crate rusqlite;
+#[macro_use] extern crate log;
+extern crate env_logger;
 
 use std::fs;
 
@@ -17,7 +19,7 @@ fn tear_down(conn: &rusqlite::Connection){
     let res = fs::remove_file(DB_PATH);
     match res {
         Ok(_) => {},
-        Err(e) => {println!("Error: {:?}", e)}
+        Err(e) => {debug!("Error: {:?}", e)}
     }
 }
 

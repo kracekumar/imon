@@ -12,6 +12,8 @@ docopt = "0.6.86"
 docopt_macros = "0.6.86"
 rustc-serialize = "0.3"
 rmp-serialize = "0.7.0"
+log = "*"
+env_logger = "*"
 
 [dependencies.rusqlite]
 version = "0.7.3"

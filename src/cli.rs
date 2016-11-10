@@ -78,12 +78,16 @@ fn start(){
 
     let sniffer_handle: thread::JoinHandle<()>;
     let depositer_handle: thread::JoinHandle<()>;
+
     let hub_handle: thread::JoinHandle<()>;
     // Start sniffer
+
     sniffer_handle = thread::spawn(move || {
         sniff(&sender);
     });
+
     let conn = db::create_conn(None);
+
     // Start depositer
     depositer_handle = thread::spawn(move || {
         decode(&receiver, Arc::get_mut(&mut domain_cache_arc).unwrap(), &conn);
@@ -102,7 +106,7 @@ pub fn parse_arguments(){
     let args: Args = Docopt::new(USAGE)
         .and_then(|d| d.decode())
         .unwrap_or_else(|e| e.exit());
-    println!("{}", args);
+    info!("{}", args);
     match args.arg_command.as_ref() {
         "start" => {
             start()

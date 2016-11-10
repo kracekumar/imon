@@ -31,10 +31,10 @@ fn handle_report(args: Args) -> Vec<TrafficTuple>{
                     format!("{}", db::get_current_date().format("%Y-%m-%d"))
                 }
             };
-            println!("{:?}: {:?}", val, to);
+            info!("{:?}: {:?}", val, to);
             let res = db::Traffic::report_by_date_range(
                 val, to, &conn);
-            println!("got {} results for date range", res.len());
+            info!("got {} results for date range", res.len());
             for traffic in res.iter(){
                 let val = traffic.clone().to_tuple();
                 buf.push(val);
@@ -42,7 +42,7 @@ fn handle_report(args: Args) -> Vec<TrafficTuple>{
         },
         None => {
             let res = db::Traffic::report_today(&conn);
-            println!("got {} results", res.len());
+            info!("got {} results", res.len());
             for traffic in res.iter(){
                 let val = traffic.clone().to_tuple();
                 buf.push(val);
@@ -69,7 +69,7 @@ fn handle_site(args: Args) -> Vec<TrafficTuple>{
             for domain_name in args.arg_args.iter(){
                 let res = db::Traffic::filter_site_by_date_range(
                     domain_name.to_string(), val.clone(), to.clone(), &conn);
-                println!("got {} results for {}", res.len(), domain_name);
+                info!("got {} results for {}", res.len(), domain_name);
                 for traffic in res.iter(){
                     let val = traffic.clone().to_tuple();
                     buf.push(val);
@@ -79,7 +79,7 @@ fn handle_site(args: Args) -> Vec<TrafficTuple>{
         None => {
             for domain_name in args.arg_args.iter(){
                 let res = db::Traffic::filter_site(domain_name.to_string(), &conn);
-                println!("got {} results for {}", res.len(), domain_name);
+                info!("got {} results for {}", res.len(), domain_name);
                 for traffic in res.iter(){
                     let val = traffic.clone().to_tuple();
                     buf.push(val);
@@ -103,7 +103,7 @@ fn handle_request(args: Args) -> Vec<u8>{
             buf = handle_site(args);
         },
         _ => {
-            println!("nothing");
+            info!("nothing");
         }
     }
     let hub_result = HubResult{result: buf};
@@ -114,13 +114,13 @@ fn handle_request(args: Args) -> Vec<u8>{
 
 // Server
 pub fn listen(){
-    println!("{}", "started");
+    info!("{}", "started");
     mioco::start(|| -> io::Result<()>{
         let addr = listend_addr();
 
         let listener = try!(TcpListener::bind(&addr));
 
-        println!("Starting hub on {:?}", try!(listener.local_addr()));
+        info!("Starting hub on {:?}", try!(listener.local_addr()));
 
         loop {
             let mut conn = try!(listener.accept());
@@ -132,12 +132,12 @@ pub fn listen(){
                         let size = try!(conn.read(&mut buf));
                         if size == 0 {
                             /* Empty */
-                            println!("{}", "Connection closed");
+                            info!("{}", "Connection closed");
                             break;
                         }
                         let mut decoder = Decoder::new(&buf[..]);
                         let args: Args = Decodable::decode(&mut decoder).ok().unwrap();
-                        println!("Received query: {:?}", args);
+                        info!("Received query: {:?}", args);
                         let mut resp = handle_request(args);
                         let _ = try!(conn.write_all(&mut resp[..]));
                         let _ = try!(conn.shutdown(Shutdown::Write));
@@ -147,7 +147,7 @@ pub fn listen(){
             );
         }
     }).unwrap();
-    println!("{}", "exit");
+    info!("{}", "exit");
 }
 
 
