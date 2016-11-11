@@ -45,17 +45,32 @@ Examples - Querying
 
 
 fn sniff(sender: &mpsc::Sender<Vec<u8>>){
+    /* This is the foundation of the application.
+
+    The function listens to all packets flowing in and out.
+    Once the packet is captured, the packet is passed on to the
+    decoder thread via channel.
+     */
     for device in pcap::Device::list().unwrap() {
         if device.name == "wlan0" {
-            println!("Found device! {:?}", device);
             let mut cap = device.open().unwrap();
+            // Capture the packet forever!
             loop{
                 while let Ok(packet) = cap.next() {
                     let len = (&packet.data).len();
                     let mut data = Vec::new();
                     data.resize(len, 0);
                     data.clone_from_slice(&packet);
-                    sender.send(data).unwrap();
+                    let res = sender.send(data);
+                    match res {
+                        Ok(_) => {},
+                        Err(e) => {
+                            /* Without this error handling sometimes code crashes.
+                            Whatever happens sniffer thread can't crash.
+                            */
+                            debug!("{:?}", e);
+                        },
+                    }
                 }
             }
         }
@@ -64,13 +79,17 @@ fn sniff(sender: &mpsc::Sender<Vec<u8>>){
 
 
 fn hub(){
-    println!("Hub");
+    info!("Starting hub");
     ipc::listen();
 }
 
 
 fn start(){
-    println!("Start");
+    /* This is the entry point for daemon.
+
+    Daemon spawns three threads to handle sniffing, decoding, hub.
+     */
+    info!("Starting daemon");
     let (sender, receiver) = mpsc::channel();
 
     let domain_cache: HashMap<String, String> = HashMap::new();
@@ -94,7 +113,6 @@ fn start(){
     });
     // Start Hub
     hub_handle = thread::spawn(|| hub());
-    // Start fetcher
     // Join all threads
     sniffer_handle.join().unwrap();
     depositer_handle.join().unwrap();
@@ -103,6 +121,8 @@ fn start(){
 
 
 pub fn parse_arguments(){
+    /* Parse given command line arguments
+     */
     let args: Args = Docopt::new(USAGE)
         .and_then(|d| d.decode())
         .unwrap_or_else(|e| e.exit());

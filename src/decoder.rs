@@ -9,11 +9,18 @@ use rusqlite::Connection;
 
 
 fn bytes_to_int(values: &[u8]) -> u64{
+    /*  Given a slice of u8's convert to u64 by doing proper
+    shifting of values and add the values.
+
+    [1u8, 1u8][..] => 257u64
+    [1u8, 1u8, 1u8][..] => 65793u64
+     */
     fn shifter(values: &[u8], multiplier: u64) -> u64{
         let mut mul = multiplier;
         let mut sum: u64 = 0;
         let no_of_pos_to_shift: u64 = 8;
         for i in values.iter() {
+            // XOR is also an option, but sum is natural to me!
             sum = sum + ((*i as u64) << mul) as u64;
             if mul != 0 {
                 mul = mul - no_of_pos_to_shift;
@@ -31,13 +38,21 @@ fn bytes_to_int(values: &[u8]) -> u64{
         },
         4 => {
             shifter(values, 24 as u64)
-        }
-        _ => {0 as u64}
+        },
+        1 => {values[0] as u64},
+        _ => 0u64
     }
 }
 
 
 fn decode_physical_layer(packet: &[u8]) -> PhysicalLayer{
+    /* Decode given slice to physical pcaket structure.
+    Physical layer packet carries 4 information. 
+    Source, destination mac address, Packet type and payload.
+    |dst: 6 byte mac address| src: 6 byte mac address| type: 2 byte| payload: 45-1500bytes|CRC: 4 bytes|
+
+    URL: https://www.wikiwand.com/en/Ethernet_frame
+     */
     let dst = format!("{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
                       packet[0], packet[1], packet[2], packet[3], packet[4], packet[5]);
     let src = format!("{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
@@ -48,6 +63,25 @@ fn decode_physical_layer(packet: &[u8]) -> PhysicalLayer{
 
 
 fn decode_ipv4_packet(packet: &[u8]) -> IPv4Packet{
+    /*
+        0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |Version|  IHL  |Type of Service|          Total Length         |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |         Identification        |Flags|      Fragment Offset    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |  Time to Live |    Protocol   |         Header Checksum       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                       Source Address                          |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                    Destination Address                        |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                    Options                    |    Padding    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    
+    RFC: https://tools.ietf.org/html/rfc791
+    */
     // First 4 bit
     let version = format!("{:x}", packet[0] & 240);
     // Next four bit
@@ -90,6 +124,28 @@ fn decode_ipv4_packet(packet: &[u8]) -> IPv4Packet{
 
 
 fn decode_tcp_packet(packet: &[u8]) -> TCPPacket{
+    /*
+     0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |          Source Port          |       Destination Port        |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                        Sequence Number                        |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                    Acknowledgment Number                      |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |  Data |           |U|A|P|R|S|F|                               |
+   | Offset| Reserved  |R|C|S|S|Y|I|            Window             |
+   |       |           |G|K|H|T|N|N|                               |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |           Checksum            |         Urgent Pointer        |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                    Options                    |    Padding    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                             data                              |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    RFC: https://tools.ietf.org/html/rfc793
+    */
     let source_port  = bytes_to_int(&packet[0..2]) as u16;
 
     let destination_port = bytes_to_int(&packet[2..4]) as u16;
@@ -113,10 +169,6 @@ fn decode_tcp_packet(packet: &[u8]) -> TCPPacket{
                 options.push_str(&format!("{:x}", p));
             }
         }
-        else {
-            payload = None;
-        }
-        
     }
 
     let flags = format!("{:08b}", packet[13]).into_bytes();
@@ -143,6 +195,23 @@ fn decode_tcp_packet(packet: &[u8]) -> TCPPacket{
 
 
 fn decode_udp_packet(packet: &[u8]) -> UDPPacket{
+    /*
+    0      7 8     15 16    23 24    31  
+    +--------+--------+--------+--------+ 
+    |     Source      |   Destination   | 
+    |      Port       |      Port       | 
+    +--------+--------+--------+--------+ 
+    |                 |                 | 
+    |     Length      |    Checksum     | 
+    +--------+--------+--------+--------+ 
+    |                                     
+    |          data octets ...            
+    +---------------- ...                 
+
+    RFC: https://www.ietf.org/rfc/rfc768.txt
+
+    UDP RFC is short!
+    */
     let source_port  = bytes_to_int(&packet[0..2]) as u16;
     let destination_port = bytes_to_int(&packet[2..4]) as u16;
     let length = bytes_to_int(&packet[4..6]) as u16;
@@ -156,10 +225,22 @@ fn decode_udp_packet(packet: &[u8]) -> UDPPacket{
 
 
 fn extract_dns_name(packet: &[u8]) -> (String, u16){
+    /* Extract name from DNS query slice or response slice.
+    */
     let mut start: u16 = 1;
     let mut stop: u16 = (packet[0] + 1) as u16;
     let mut domain_name = String::new();
-    while true {
+    /* Domain name notation
+
+    Original value
+    ----
+    kracekumar.com
+    
+    Encoded value
+    ----
+    [10]kracekumar[3]com[0]
+    */
+    loop {
         let v: Vec<u8> = packet[start as usize ..stop as usize].iter().map({|x| *x}).collect();
         domain_name.push_str(&String::from_utf8(v).unwrap());
         if packet[stop as usize] == 0 {
@@ -185,6 +266,17 @@ fn extract_dns_question(packet: &[u8]) -> (QSection, &[u8]){
     QType unsigned 16 bit representing record type.
 
     QClass unsigned 16 bit representing class of resource records.
+
+    0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                                               |
+    /                     QNAME                     /
+    /                                               /
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                     QTYPE                     |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                     QCLASS                    |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
      */
     let (domain_name, last_read_position) = extract_dns_name(&packet);
     let qtype = bytes_to_int(&packet[last_read_position as usize .. (last_read_position + 2) as usize]) as u16;
@@ -198,6 +290,30 @@ fn extract_dns_question(packet: &[u8]) -> (QSection, &[u8]){
 
 
 fn extract_dns_answer(packet: &[u8]) -> Option<DNSAnswer>{
+    /*
+                                     1  1  1  1  1  1
+      0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                                               |
+    /                                               /
+    /                      NAME                     /
+    |                                               |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                      TYPE                     |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                     CLASS                     |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                      TTL                      |
+    |                                               |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                   RDLENGTH                    |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--|
+    /                     RDATA                     /
+    /                                               /
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+
+    Answer is present only in the DNS response.
+    */
     if packet.len() <= 0 as usize {
         None
     } else {
@@ -212,12 +328,16 @@ fn extract_dns_answer(packet: &[u8]) -> Option<DNSAnswer>{
                 let ans_type = get_dns_packet_type(
                     bytes_to_int(&packet[start as usize .. (start + 2) as usize]) as u16);
                 start += 2;
+
                 let class = bytes_to_int(&packet[start as usize .. (start + 2) as usize]) as u16;
                 start = start + 2;
+
                 let ttl = bytes_to_int(&packet[start as usize .. (start + 4) as usize]) as u32;
                 start = start + 4;
+
                 let rlength = bytes_to_int(&packet[start as usize .. (start + 2) as usize]) as u16;
                 start = start + 2;
+
                 let mut rdata = Vec::new(); /* Assumption maximum of 6 IPs */
                 if ans_type == DNSRequestType::A || ans_type == DNSRequestType::CNAME {
                     for _ in 0..(rlength/4) {
@@ -242,6 +362,10 @@ fn extract_dns_answer(packet: &[u8]) -> Option<DNSAnswer>{
 
 
 fn get_domain_name(name: String) -> String{
+    /* Given a string strip subdomain and return domain.
+
+    api.kracekumar.com -> kracekumar.com
+    */
     let cloned_name = name.clone();
     let words: Vec<&str> = name.split('.').collect();
     let len = words.len();
@@ -258,6 +382,42 @@ fn get_domain_name(name: String) -> String{
 
 
 pub fn decode_dns_packet(packet: &[u8]) ->DNSPacket{
+    /*
+
+    Packet structure
+    +---------------------+
+    |        Header       |
+    +---------------------+
+    |       Question      | the question for the name server
+    +---------------------+
+    |        Answer       | RRs answering the question
+    +---------------------+
+    |      Authority      | RRs pointing toward an authority
+    +---------------------+
+    |      Additional     | RRs holding additional information
+    +---------------------+
+    
+
+    Header structure
+    -------
+    1  1  1  1  1  1
+    0  1  2  3  4  5  6  7  8  9  0  1  2  3  4  5
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                      ID                       |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |QR|   Opcode  |AA|TC|RD|RA|   Z    |   RCODE   |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                    QDCOUNT                    |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                    ANCOUNT                    |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                    NSCOUNT                    |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+    |                    ARCOUNT                    |
+    +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+
+    RFC: https://tools.ietf.org/html/rfc1035
+    */
     let id = bytes_to_int(&packet[0..2]) as u16;
     // This is the first bit
     let query = (packet[2] & 10000000) == 1;
@@ -275,21 +435,42 @@ pub fn decode_dns_packet(packet: &[u8]) ->DNSPacket{
     let arcount = bytes_to_int(&packet[10..12]) as u16;
     //question_name = bytes_to_int
     let (qsection, answer_data) = extract_dns_question(&packet[12..]);
-    let mut answer = extract_dns_answer(&answer_data).unwrap();
+    let answer = extract_dns_answer(&answer_data);
 
-    if answer.name == "" {
-        answer.update_name(qsection.qname.clone());
+    match answer {
+        Some(mut answer) => {
+            if answer.name == "" {
+                answer.update_name(qsection.qname.clone());
+            }
+            let dns_packet = DNSPacket{id: id, query: query, opcode: opcode, authoriative_answer:authoriative_answer,
+                                       trun_cation: trun_cation, recursion_desired: recursion_desired,
+                                       recursion_available: recursion_available, rcode: rcode,
+                                       qdcount: qdcount, ancount: ancount, nscount: nscount,
+                                       arcount: arcount, qsection: qsection, answer: answer};
+
+            info!("{:?}", dns_packet);
+            dns_packet
+        },
+        None =>{
+            // Just have a dummy answer
+            // TODO: replace with option?
+            let answer = DNSAnswer{name: "x".to_string(),
+                          ans_type: DNSRequestType::SOA,
+                          class: 0u16,
+                          ttl: 0u32,
+                          rlength: 0u16,
+                          rdata: vec!()
+            };
+            let dns_packet = DNSPacket{id: id, query: query, opcode: opcode, authoriative_answer:authoriative_answer,
+                                       trun_cation: trun_cation, recursion_desired: recursion_desired,
+                                       recursion_available: recursion_available, rcode: rcode,
+                                       qdcount: qdcount, ancount: ancount, nscount: nscount,
+                                       arcount: arcount, qsection: qsection, answer: answer};
+
+            info!("{:?}", dns_packet);
+            dns_packet
+        }
     }
-
-    let dns_packet = DNSPacket{id: id, query: query, opcode: opcode, authoriative_answer:authoriative_answer,
-                               trun_cation: trun_cation, recursion_desired: recursion_desired,
-                               recursion_available: recursion_available, rcode: rcode,
-                               qdcount: qdcount, ancount: ancount, nscount: nscount,
-                               arcount: arcount, qsection: qsection, answer: answer};
-
-    info!("{:?}", dns_packet);
-
-    dns_packet
 }
 
 
@@ -299,6 +480,8 @@ fn to_ip_from_str(ip: &str) -> Ipv4Addr{
 
 
 fn store_packet(ip: String, len: usize, domain_cache: &mut HashMap<String, String>, conn: &Connection){
+    /* Given packet information persist the data to database.
+    */
     let val = domain_cache.get(&ip);
     match val{
         Some(domain_name) => {
@@ -310,7 +493,8 @@ fn store_packet(ip: String, len: usize, domain_cache: &mut HashMap<String, Strin
             if !ipv4.is_private(){
                 /* Lot of service directly connect to IP address and reverse lookup fails.
                 As of now there is no way to trace the origin of the packet domain.
-                */
+                 */
+                info!("Adding ip {:?} traffic to unresolved.com", ipv4);
                 db::Traffic::create_or_update("unresolved.com".to_string(), len as i64, conn);
             }
         }
@@ -319,6 +503,8 @@ fn store_packet(ip: String, len: usize, domain_cache: &mut HashMap<String, Strin
 
 
 fn decode_packet(packet: Vec<u8>, domain_cache: &mut HashMap<String, String>, conn: &Connection){
+    /* Master function for decoding the packet based on type 
+    */
     let len = packet.len();
     let physical_layer_packet = decode_physical_layer(&packet);
     if physical_layer_packet.packet_type == PacketType::IPv4 {
@@ -363,7 +549,7 @@ pub fn decode(receiver: &mpsc::Receiver<Vec<u8>>, domain_cache: &mut HashMap<Str
         let packet = receiver.recv();
         match packet{
             Ok(val) => decode_packet(val, domain_cache, conn),
-            Err(e) => info!("{:?}", e),
+            Err(e) => debug!("{:?}", e),
         }
     }
 }
@@ -454,4 +640,11 @@ fn test_decode_udp_packet(){
     assert_eq!(packet.source_port, 57621);
     assert_eq!(packet.destination_port, 57621);
     assert_eq!(packet.payload.unwrap(), payload);
+}
+
+
+#[test]
+fn test_bytes_to_int(){
+    assert_eq!(bytes_to_int(&[1u8, 1u8][..]), 257u64);
+    assert_eq!(bytes_to_int(&[1u8, 1u8, 1u8][..]), 65793u64);
 }

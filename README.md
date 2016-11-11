@@ -23,7 +23,7 @@ cargo build
 - Open an another terminal and go the project root directory. Now query the daemon.
 
 ```bash
-./target/debug/imon site google.com
+env RUST_LOG=debug ./target/debug/imon site google.com
 ---
 Command: site
 Arguments: google.com,
@@ -81,9 +81,7 @@ Examples - Querying
 - [ ] IP cache invalidation
 - [X] Replace `println` with log.
 - [ ] Support IPv6 packets!
-- [ ] Handle socket connection failure when daemon is down
+- [X] Handle socket connection failure when daemon is down
 - [ ] Handle input argument validation
 - [X] Move decoding logic to separate file
 - [ ] Use multiple threads to handle the packet decoding
-
-### Autostart

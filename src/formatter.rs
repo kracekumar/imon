@@ -2,6 +2,11 @@ use HubResult;
 
 
 fn convert_to_human_readable_format(count: u64) ->(f64, String){
+    /*
+    Given number of bytes convert to tuple.
+    First element contains value less than 1023 and second
+    element represents the unit.
+    */
     let units = ["B", "KB", "MB", "GB"];
     let base = 1024f64;
     let mut lowest_count = count as f64;
@@ -18,17 +23,21 @@ fn convert_to_human_readable_format(count: u64) ->(f64, String){
 
 
 pub fn display_report(hub_result: &HubResult, command: &str){
+    /* Display the results obtained from daemon.
+
+    Output varies depend on type of query.
+    */
     for (index, result) in hub_result.result.iter().enumerate(){
         let (val, format) = convert_to_human_readable_format(result.1 as u64);
         match command {
             "site" => {
-                info!("{:?}| {}| {:.2?} {:?}| {:?}", index, result.0, val, format, result.2);
+                // Using info! macro adds `info` at the start of the line. So using println!
+                println!("{:?}| {}| {:.2?} {:?}| {:?}", index, result.0, val, format, result.2);
             },
             "report" => {
-                info!("{:?}| {}| {:.2?} {:?}", index, result.0, val, format);
+                println!("{:?}| {}| {:.2?} {:?}", index, result.0, val, format);
             },
-            _ => {
-            }
+            _ => {}
         }
     }
 }

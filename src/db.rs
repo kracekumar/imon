@@ -2,7 +2,6 @@ use std::path::Path;
 use std::fs::File;
 use time;
 use rusqlite::{Connection, Statement};
-//use rusqlite::types::{FromSql};
 use chrono;
 use chrono::offset::utc::UTC;
 use chrono::NaiveDate;
@@ -23,6 +22,9 @@ pub fn get_current_date() -> NaiveDate{
 
 #[derive(Debug, Clone)]
 pub struct Traffic {
+    /* Traffic structure reflects `traffic` table columns and
+    used for serialization and deserialization */
+
     pub id: i32,
     pub domain_name: String,
     pub data_consumed_in_bytes: i64,
@@ -33,6 +35,8 @@ pub struct Traffic {
 
 
 fn unpack(stmt: &mut Statement, fill_date: bool, fill_audit_fields: bool, fill_id: bool) -> Vec<Traffic>{
+    /* Fill the missing values with default values based on flags
+    */
     let mut res: Vec<Traffic> = Vec::new();
     // TODO: This is complicated, what's the better way?
     if !fill_date & !fill_audit_fields & !fill_id{
@@ -137,7 +141,7 @@ values ($1, $2, $3, $4, $5)", &[&traffic.domain_name, &traffic.data_consumed_in_
     }
 
     fn update(record: Traffic, data_consumed_in_bytes: i64, conn: &Connection) -> i32{
-        /* Update the record
+        /* Update the new data consumed by the site.
          */
         let cur_datetime = time::get_time();
         let quantity: i64 = record.data_consumed_in_bytes + data_consumed_in_bytes;
@@ -155,12 +159,10 @@ values ($1, $2, $3, $4, $5)", &[&traffic.domain_name, &traffic.data_consumed_in_
         let qs = Traffic::filter(domain_name.clone(), conn);
         match qs{
             Some(record) => {
-                /* Update the record */
                 let res = Traffic::update(record.unwrap(), data_consumed_in_bytes, conn);
                 ("update".to_string(), res)
             },
             None => {
-                /* create a new record */
                 let res = Traffic::create(domain_name.clone(), data_consumed_in_bytes, conn);
                 ("create".to_string(), res)
             }
@@ -169,6 +171,7 @@ values ($1, $2, $3, $4, $5)", &[&traffic.domain_name, &traffic.data_consumed_in_
 
     // Reporting functions
     pub fn report_today(conn: &Connection) -> Vec<Traffic>{
+        // Return data consumed by all sites today.
         let date = get_current_date();
         let sql_stmt = format!("select id, domain_name, data_consumed_in_bytes, date, created_at, updated_at from
         traffic where date=\"{:?}\" order by data_consumed_in_bytes desc", date);
@@ -177,6 +180,8 @@ values ($1, $2, $3, $4, $5)", &[&traffic.domain_name, &traffic.data_consumed_in_
     }
 
     pub fn report_by_date_range(start_date: String, end_date: String, conn: &Connection) -> Vec<Traffic>{
+        /* Sum all the traffic data by domain
+        */
         let sql_stmt = format!("select domain_name, sum(data_consumed_in_bytes) as total from traffic where date between {:?} and {:?} group by domain_name order by total desc", start_date, end_date);
         let mut stmt = conn.prepare(&sql_stmt).unwrap();
         unpack(&mut stmt, true, true, true)
@@ -191,7 +196,8 @@ values ($1, $2, $3, $4, $5)", &[&traffic.domain_name, &traffic.data_consumed_in_
     }
 
     pub fn filter_site_by_date_range(domain_name: String, start_date: String,
-                                end_date: String, conn: &Connection) -> Vec<Traffic>{
+                                     end_date: String, conn: &Connection) -> Vec<Traffic>{
+        // Filter site in given date range
         let sql_stmt = format!("select domain_name, data_consumed_in_bytes, date from traffic where domain_name={:?} and
 date between {:?} and {:?}",
                                domain_name, start_date, end_date);

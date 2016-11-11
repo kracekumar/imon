@@ -1,3 +1,4 @@
+use std::process;
 use mioco;
 
 use std::net::{SocketAddr, TcpStream, Shutdown};
@@ -18,7 +19,10 @@ fn listend_addr() -> SocketAddr {
     FromStr::from_str(DEFAULT_LISTEN_ADDR).unwrap()
 }
 
+
 fn handle_report(args: Args) -> Vec<TrafficTuple>{
+    /* Handle report for daily or over date range
+    */
     let mut buf: Vec<TrafficTuple> = Vec::new();
     let conn = db::create_conn(None);
     match args.flag_from{
@@ -31,7 +35,6 @@ fn handle_report(args: Args) -> Vec<TrafficTuple>{
                     format!("{}", db::get_current_date().format("%Y-%m-%d"))
                 }
             };
-            info!("{:?}: {:?}", val, to);
             let res = db::Traffic::report_by_date_range(
                 val, to, &conn);
             info!("got {} results for date range", res.len());
@@ -54,6 +57,14 @@ fn handle_report(args: Args) -> Vec<TrafficTuple>{
 
 
 fn handle_site(args: Args) -> Vec<TrafficTuple>{
+    /* Handle site specific query.
+
+    Sample requests:
+    ----
+    site google.com --from 2016-11-01 --to 2016-11-05
+    site google.com duckduckgo.com
+    site google.com --from 2016-11-01
+    */
     let mut buf: Vec<TrafficTuple> = Vec::new();
     let conn = db::create_conn(None);
     match args.flag_from{
@@ -63,6 +74,7 @@ fn handle_site(args: Args) -> Vec<TrafficTuple>{
                     to
                 },
                 None => {
+                    // if `to` argument is missing, get current date
                     format!("{}", db::get_current_date().format("%Y-%m-%d"))
                 }
             };
@@ -77,6 +89,7 @@ fn handle_site(args: Args) -> Vec<TrafficTuple>{
             }
         },
         None => {
+            // If `from` argument is missing show all records for the site[s].
             for domain_name in args.arg_args.iter(){
                 let res = db::Traffic::filter_site(domain_name.to_string(), &conn);
                 info!("got {} results for {}", res.len(), domain_name);
@@ -92,7 +105,7 @@ fn handle_site(args: Args) -> Vec<TrafficTuple>{
 
 
 fn handle_request(args: Args) -> Vec<u8>{
-    //Handle command
+    //Handle incoming query
     let mut buf: Vec<TrafficTuple> = Vec::new();
     let mut data: Vec<u8> = Vec::new();
     match args.arg_command.as_ref() {
@@ -114,8 +127,14 @@ fn handle_request(args: Args) -> Vec<u8>{
 
 // Server
 pub fn listen(){
-    info!("{}", "started");
-    mioco::start(|| -> io::Result<()>{
+    /* Listen to all incoming socket connections.
+
+    When a new connection is received spawn a `coroutine`
+    and handle data collection and write the result to socket.
+
+    As soon the data is written over the socket, close the connection.
+    */
+    let _ = mioco::start(|| -> io::Result<()>{
         let addr = listend_addr();
 
         let listener = try!(TcpListener::bind(&addr));
@@ -127,7 +146,8 @@ pub fn listen(){
 
             mioco::spawn(
                 move || -> io::Result<()>{
-                    let mut buf = [0u8; 200];
+                    // 120 is minimum required
+                    let mut buf = [0u8; 150];
                     loop {
                         let size = try!(conn.read(&mut buf));
                         if size == 0 {
@@ -157,11 +177,21 @@ fn send_to_hub(args: &Args) -> Vec<u8>{
     let _ = args.encode(&mut Encoder::new(&mut &mut buf[..]));
 
     // Send the data over the wire
-    let mut stream = TcpStream::connect(DEFAULT_LISTEN_ADDR).unwrap();
-    let _ = stream.write(&buf);
-    let mut recv: Vec<u8> = Vec::new();
-    let _ = stream.read_to_end(&mut recv);
-    recv
+    let stream = TcpStream::connect(DEFAULT_LISTEN_ADDR);
+    match stream {
+        Ok(mut conn) => {
+            let _ = conn.write(&buf);
+            let mut recv: Vec<u8> = Vec::new();
+            let _ = conn.read_to_end(&mut recv);
+            recv
+        }
+        Err(e) => {
+            debug!("{:?}", e);
+            debug!("check daemon is running");
+            process::exit(1);
+        }
+    }
+    
 }
 
 
