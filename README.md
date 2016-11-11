@@ -1,6 +1,6 @@
 imon [![Build Status](https://travis-ci.org/kracekumar/imon.svg)](https://travis-ci.org/kracekumar/imon) [![codecov](https://codecov.io/gh/kracekumar/imon/branch/master/graph/badge.svg)](https://codecov.io/gh/kracekumar/imon)
 
-Internet bandwidth data usage monitor by domain.
+Internet bandwidth data usage monitor by domain. [Short presentation](http://slides.com/kracekumarramaraju/who-is-eating-my-bandwidth#/)
 
 ### Setup
 
