@@ -18,7 +18,7 @@ cargo build
 ```
 
 - Start the daemon. The daemon captures `WiFi` packet, so you need to have access to the device.
-`$sudo ./target/debug/imon start`
+`#env RUST_LOG=debug ./target/debug/imon start`
 
 - Open an another terminal and go the project root directory. Now query the daemon.
 
