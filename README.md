@@ -85,3 +85,10 @@ Examples - Querying
 - [ ] Handle input argument validation
 - [X] Move decoding logic to separate file
 - [ ] Use multiple threads to handle the packet decoding
+
+
+### Caveats
+
+- The hashmap stores domain name against IP address. So sites sharing same IP address traffic data will be skewed. `youtube` and `google.com` share similar IPs.
+- The majority of sites load static data from CDN, the request goes to IP address of the CDN. As a result the original domain traffic represented is lesser than actual. Though traffic data against the CDN is stored.
+- If the daemon is started after opening the browser, DNS request isn't sent until and unless DNS result is expired or DNS result is missing in cache.
