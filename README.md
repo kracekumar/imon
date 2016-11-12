@@ -14,7 +14,7 @@ Use [rustup](https://www.rustup.rs).
 ``` bash
 git clone git@github.com:kracekumar/imon.git
 cd imon
-cargo build
+cargo build --release
 ```
 
 - Start the daemon. The daemon captures `WiFi` packet, so you need to have access to the device.
