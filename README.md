@@ -18,12 +18,12 @@ cargo build
 ```
 
 - Start the daemon. The daemon captures `WiFi` packet, so you need to have access to the device.
-`#env RUST_LOG=debug ./target/debug/imon start`
+`#env RUST_LOG=debug ./target/release/imon start`
 
 - Open an another terminal and go the project root directory. Now query the daemon.
 
 ```bash
-env RUST_LOG=debug ./target/debug/imon site google.com
+env RUST_LOG=debug ./target/release/imon site google.com
 ---
 Command: site
 Arguments: google.com,
