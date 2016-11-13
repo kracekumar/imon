@@ -35,7 +35,7 @@ Arguments: google.com,
 ### Help
 
 ```bash
-user@user-ThinkPad-T400 ~/c/imon> ./target/debug/imon -h
+user@user-ThinkPad-T400 ~/c/imon> ./target/release/imon -h
 imon
 
 Usage:
@@ -55,13 +55,13 @@ The mostly used commands are
 
 Examples - Querying
 --------
-- ./target/debug/imon site google.com zulipchat.com duckduckgo.com
-- ./target/debug/imon site google.com
-- ./target/debug/imon site google.com --from 2016-11-01
-- ./target/debug/imon site google.com --from 2016-11-01 --to 2016-11-03
-- ./target/debug/imon report
-- ./target/debug/imon report --from 2016-11-05
-- ./target/debug/imon report --from 2016-11-05 --to 2016-11-05
+- ./target/release/imon site google.com zulipchat.com duckduckgo.com
+- ./target/release/imon site google.com
+- ./target/release/imon site google.com --from 2016-11-01
+- ./target/release/imon site google.com --from 2016-11-01 --to 2016-11-03
+- ./target/release/imon report
+- ./target/release/imon report --from 2016-11-05
+- ./target/release/imon report --from 2016-11-05 --to 2016-11-05
 
 ```
 

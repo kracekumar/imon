@@ -24,6 +24,7 @@ fn tear_down(conn: &rusqlite::Connection){
 }
 
 
+
 fn insert_or_update(){
     let conn = create_test_conn();
     let res = imon::db::Traffic::create_or_update("kracekumar".to_string(), 23000, &conn);

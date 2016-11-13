@@ -12,7 +12,6 @@ extern crate docopt;
 extern crate pcap;
 #[macro_use] extern crate log;
 extern crate env_logger;
-
 use std::fmt;
 
 pub mod cli;
