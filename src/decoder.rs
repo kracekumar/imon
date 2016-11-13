@@ -1,10 +1,13 @@
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc};
+use std::io;
 use std::str::FromStr;
 use std::collections::HashMap;
+use std::thread;
+use resolve;
 
 use packet::{PhysicalLayer, IPv4Packet, TCPPacket, UDPPacket, QSection, DNSAnswer, DNSPacket, DNSRequestType, PacketType, get_packet_type, get_dns_packet_type};
 use db;
-use std::net::{Ipv4Addr};
+use std::net::{IpAddr, Ipv4Addr};
 use rusqlite::Connection;
 
 
@@ -479,26 +482,57 @@ fn to_ip_from_str(ip: &str) -> Ipv4Addr{
 }
 
 
-fn store_packet(ip: String, len: usize, domain_cache: &mut HashMap<String, String>, conn: &Connection){
+fn store_packet(ip: String, len: usize, mut domain_cache: &mut HashMap<String, String>, conn: &Connection){
     /* Given packet information persist the data to database.
-    */
-    let val = domain_cache.get(&ip);
-    match val{
-        Some(domain_name) => {
-            info!("Data for {:?} of {:?} bytes", domain_name, len);
-            db::Traffic::create_or_update(domain_name.to_string(), len as i64, conn);
-        },
-        None => {
-            let ipv4 = to_ip_from_str(&ip);
-            if !ipv4.is_private(){
-                /* Lot of service directly connect to IP address and reverse lookup fails.
-                As of now there is no way to trace the origin of the packet domain.
-                 */
-                info!("Adding ip {:?} traffic to unresolved.com", ipv4);
-                db::Traffic::create_or_update("unresolved.com".to_string(), len as i64, conn);
-            }
+     */
+    {
+        let mut val = domain_cache.get(&ip);
+        match val{
+            Some(domain_name) => {
+                info!("Data for {:?} of {:?} bytes", domain_name, len);
+                db::Traffic::create_or_update(domain_name.to_string(), len as i64, conn);
+                return
+            },
+            None => {}
         }
     }
+    /* If you're wondering why this piece of code isn't wrapped inside None block, read next few sentence
+    `hashmap.get` method borrows the hashmap immutably. As a result `hashmap.insert` will fail. 
+    So in a given a scope borrow can happen only once. So the closure is the answer for mutable borrow (insert)
+    and immutable borrow (get).
+
+    Brief description in https://doc.rust-lang.org/book/references-and-borrowing.html under the section
+    `Thinking in scopes`
+    */
+    let ipv4 = to_ip_from_str(&ip);
+    if !ipv4.is_private(){
+        /* Lot of service directly connect to IP address and reverse lookup fails.
+        As of now there is no way to trace the origin of the packet domain.
+         */
+        info!("Adding ip {:?} traffic to unresolved.com", ipv4);
+        let resolver_thread = thread::spawn(move ||resolve_ip(IpAddr::V4(ipv4)));
+        let res = resolver_thread.join();
+        if res.is_ok() {
+            let resolve_result = res.unwrap();
+            match resolve_result {
+                Ok(name) => {
+                    db::Traffic::create_or_update(name.clone(), len as i64, conn);
+                    domain_cache.insert(ip, name);
+                },
+                Err(_) => {
+                    domain_cache.insert(ip, "unresolved.com".to_string());
+                    db::Traffic::create_or_update("unresolved.com".to_string(), len as i64, conn);
+                }
+            }
+        } else {
+            db::Traffic::create_or_update("unresolved.com".to_string(), len as i64, conn);
+        }
+    }
+}
+
+
+fn resolve_ip(ip: IpAddr) -> io::Result<String>{
+    resolve::resolve_addr(&ip)
 }
 
 

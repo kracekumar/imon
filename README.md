@@ -73,7 +73,7 @@ Examples - Querying
 - [X] Add command line usage documentation
 - [X] Filter local network traffic
 - [ ] Add a way to monitor Ethernet port
-- [ ] Handle cache IP miss. Send DNS lookup.
+- [X] Handle cache IP miss. Send DNS lookup.
 - [ ] Support audio/video sites.
 - [x] Integrate with travis-ci
 - [ ] Write cached IPs to disk before shutting down

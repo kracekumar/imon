@@ -25,6 +25,9 @@ git = "https://github.com/ebfull/pcap"
 [dependencies.rmp]
 rmp = "^0.7"
 
+[dependencies.resolve]
+git = "https://github.com/murarth/resolve"
+
 [[bin]]
 name = "imon"
 test = true
